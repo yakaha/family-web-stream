@@ -1,0 +1,13 @@
+{
+  "name": "family-web-stream",
+  "version": "1.0.0",
+  "description": "Family Web Stream - Web TV & Proxy Server",
+  "main": "tools/preview-server.js",
+  "scripts": {
+    "start": "node tools/preview-server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "private": true
+}

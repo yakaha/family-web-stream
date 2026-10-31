@@ -1,0 +1,63 @@
+:root {
+    --black: #050505;
+    --surface: rgba(255, 255, 255, 0.035);
+    --surface-2: rgba(255, 255, 255, 0.075);
+    --surface-3: rgba(255, 255, 255, 0.11);
+
+    --line: rgba(255, 255, 255, 0.08);
+    --line-2: rgba(255, 255, 255, 0.16);
+    --line-3: rgba(255, 255, 255, 0.3);
+
+    --text: #f7f7f6;
+    --text-2: #adadad;
+    --text-3: #74746f;
+
+    --amber: #febc06;
+    --ember: #cc4207;
+    --mint: #15e9a4;
+
+    --live: var(--ember);
+    --saved: var(--amber);
+    --ok: var(--mint);
+
+    --grad-ink: linear-gradient(92deg, var(--amber) 0%, var(--mint) 100%);
+    --grad-bar: linear-gradient(180deg, var(--amber) 0%, var(--mint) 100%);
+    --grad-line: linear-gradient(90deg, var(--amber), var(--ember) 48%, var(--mint));
+    --on-accent: #080807;
+
+    --hole-x: 0px;
+    --hole-y: 0px;
+    --hole-w: 0px;
+    --hole-h: 0px;
+    --stage-x: 0px;
+    --stage-y: 0px;
+
+    --rail-mark-h: 0px;
+    --rail-mark-y: 0px;
+
+    /* Rail width. The grid anchors to this measurement so one line falls right on the
+     sidebar edge (184 is not a multiple of 64). */
+    --rail: 192px;
+    --grid: 64px;
+    --grid-line: rgba(255, 255, 255, 0.05);
+    --grad-fade: linear-gradient(180deg, rgba(5, 5, 5, 0) 0%, var(--black) 24%);
+    --grad-bg: linear-gradient(
+        90deg,
+        rgba(254, 188, 6, 0.3),
+        rgba(204, 66, 7, 0.23) 48%,
+        rgba(21, 233, 164, 0.3)
+    );
+    --focus: #fff;
+    --ring: rgba(255, 255, 255, 0.5);
+
+    --r-sm: 8px;
+    --r-md: 12px;
+    --r-lg: 18px;
+    --r-xl: 26px;
+
+    --ease: cubic-bezier(0.32, 0.72, 0, 1);
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --dur-fast: 140ms;
+    --dur: 220ms;
+    --dur-slow: 380ms;
+}

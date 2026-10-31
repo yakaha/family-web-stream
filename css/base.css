@@ -1,0 +1,417 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html,
+body {
+    height: 100%;
+    overflow: hidden;
+}
+
+body,
+.loading {
+    background-color: var(--black);
+    background-image:
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px), var(--grad-fade),
+        var(--grad-bg);
+    background-size:
+        var(--grid) var(--grid),
+        var(--grid) var(--grid),
+        100% 100%,
+        100% 100%;
+    background-repeat: repeat, repeat, no-repeat, no-repeat;
+    /* The grid starts at the rail edge: that way one line falls right there and the rest
+     follow every 64px. Vertically it centres, since 1080 is not a multiple either. */
+    background-position:
+        var(--rail) center,
+        var(--rail) center,
+        center,
+        center;
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--grad-line);
+    opacity: 0.55;
+    z-index: 30;
+    pointer-events: none;
+}
+
+body.playing::before {
+    opacity: 0;
+}
+
+body {
+    color: var(--text);
+    font-family:
+        "SamsungOne",
+        "Samsung Sans",
+        system-ui,
+        -apple-system,
+        sans-serif;
+    font-size: 24px;
+    line-height: 1.4;
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+}
+
+.dim {
+    color: var(--text-3);
+}
+
+.rail::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 3px;
+    height: var(--rail-mark-h, 0px);
+    border-radius: 0 3px 3px 0;
+    background: var(--grad-bar);
+    opacity: 0.9;
+    transform: translateY(var(--rail-mark-y, 0px));
+    transition:
+        transform var(--dur) var(--ease),
+        height var(--dur) var(--ease);
+    pointer-events: none;
+}
+
+#app {
+    height: 100%;
+}
+
+.app {
+    display: grid;
+    grid-template-columns: var(--rail) 1fr;
+    grid-template-rows: minmax(0, 1fr);
+    height: 100%;
+}
+
+.rail {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 48px 16px 32px;
+    overflow: hidden;
+    background: #0a0a0a;
+    border-right: 1px solid var(--line-2);
+}
+
+/* Ambient glow that drifts up very slowly. It animates transform, not background-position:
+   on a TV only transform and opacity stay on the GPU without a repaint. */
+.rail-glow {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -60%;
+    height: 55%;
+    background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+    animation: rail-drift 24s var(--ease) infinite;
+    pointer-events: none;
+}
+
+@keyframes rail-drift {
+    to {
+        transform: translate3d(0, 300%, 0);
+    }
+}
+
+.rail-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.rail-block {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-height: 0;
+    margin-top: 16px;
+}
+
+.rail-title {
+    padding: 0 12px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+
+.rail-src {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    height: 64px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: var(--r-md);
+    background: transparent;
+    color: var(--text-3);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        background-color var(--dur-fast) var(--ease),
+        color var(--dur-fast) var(--ease);
+}
+
+.rail-src-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rail-src-kind {
+    flex: none;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--text-3);
+}
+
+.rail-src.selected {
+    color: var(--text);
+    background: var(--surface);
+}
+.rail-src.focused {
+    color: var(--text);
+    background: var(--surface-2);
+    box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.rail-foot {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: auto;
+    padding: 0 12px;
+}
+
+.rail-clock {
+    font-size: 32px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+}
+
+.rail-counts {
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--text-3);
+}
+
+/* The marker stretches while it travels (the .moving class lasts 300ms). */
+.rail.moving::after {
+    transform: translateY(var(--rail-mark-y, 0px)) scaleY(1.35);
+}
+
+/* The icon springs in when it becomes active, and grows with the focus. */
+.rail-btn svg {
+    transition:
+        transform var(--dur) var(--ease-out),
+        color var(--dur-fast) var(--ease);
+}
+
+.rail-btn.active svg {
+    color: var(--ok);
+    transform: scale(1.08);
+}
+
+.rail-btn.focused svg {
+    transform: scale(1.12);
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 52px;
+    padding: 0 8px;
+    margin-bottom: 1.5vh;
+    color: var(--text);
+}
+
+@keyframes brand-breathe {
+    to {
+        opacity: 0.82;
+        transform: scale(1.03);
+    }
+}
+
+/* The mark breathes: opacity and scale, both composited. */
+.brand-img {
+    animation: brand-breathe 6s var(--ease) infinite alternate;
+    display: block;
+    flex: none;
+    width: auto;
+    height: 40px;
+}
+
+.wordmark {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    min-width: 0;
+    white-space: nowrap;
+}
+
+.wordmark-name {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--text-2);
+}
+
+.wordmark-tag {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+
+@supports (-webkit-background-clip: text) or (background-clip: text) {
+    .wordmark-name {
+        background: var(--grad-ink);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+    }
+}
+
+.rail-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    width: 100%;
+    height: 80px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: var(--r-md);
+    background: transparent;
+    color: var(--text-3);
+    font: inherit;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        background-color var(--dur-fast) var(--ease),
+        box-shadow var(--dur-fast) var(--ease);
+}
+
+.rail-btn svg {
+    color: currentColor;
+}
+.rail-btn span {
+    color: inherit;
+}
+
+.rail-btn.active {
+    color: var(--text);
+}
+.rail-btn.active svg {
+    color: var(--ok);
+}
+
+.row:focus::before,
+.row.focused::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 62%;
+    border-radius: 0 3px 3px 0;
+    background: var(--grad-bar);
+}
+
+.rail-btn.focused {
+    color: var(--text);
+    background: var(--surface-2);
+    box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.main {
+    position: relative;
+    min-height: 0;
+    /* 48/64/40: measurements of the 8 grid (the TV viewport is always 1920x1080) */
+    padding: 48px 64px 40px;
+}
+
+.screen {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+}
+
+@keyframes screen-in {
+    from {
+        opacity: 0;
+    }
+}
+
+.screen {
+    animation: screen-in var(--dur) var(--ease-out);
+}
+
+h1 {
+    font-size: clamp(39px, 2.7vw, 50px);
+    font-weight: 650;
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+}
+
+.bar {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    padding-bottom: 26px;
+}
+
+.bar-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.meta {
+    margin-top: 8px;
+    font-size: 19px;
+    letter-spacing: 0.01em;
+    color: var(--text-3);
+}
+
+.empty {
+    max-width: 44ch;
+    padding: 20px 0 4px;
+    font-size: 22px;
+    line-height: 1.55;
+    color: var(--text-3);
+}

@@ -1,0 +1,364 @@
+var App = App || {} // eslint-disable-line no-var -- shared namespace, no modules
+
+App.tv = (function () {
+    const KEY = {
+        LEFT: 37,
+        UP: 38,
+        RIGHT: 39,
+        DOWN: 40,
+        ENTER: 13,
+        BACK: 10009,
+        BACK_WEBOS: 461,
+        BACK_ESC: 27,
+        BACK_BS: 8,
+        BACK_ANDROID: 4,
+        RED: 403,
+        CH_UP: 427,
+        CH_DOWN: 428,
+        PAGE_UP: 33,
+        PAGE_DOWN: 34,
+        PLAY: 415,
+        PAUSE: 19,
+        PLAY_PAUSE: 10252,
+        STOP: 413,
+        FAST_FORWARD: 417,
+        REWIND: 412,
+        SPACE: 32,
+    }
+
+    let hasRequestedFullscreen = false
+    function requestFullscreenOnce() {
+        if (hasRequestedFullscreen) return
+        hasRequestedFullscreen = true
+        try {
+            const el = document.documentElement
+            const rfs =
+                el.requestFullscreen ||
+                el.webkitRequestFullscreen ||
+                el.msRequestFullscreen ||
+                el.mozRequestFullScreen
+            if (rfs && !document.fullscreenElement && !document.webkitFullscreenElement) {
+                rfs.call(el).catch(() => {})
+            }
+        } catch {}
+    }
+
+    const zones = {}
+    let current = null
+    let row = 0
+    let col = 0
+    let onKey = function () {}
+    let onFocus = null
+    let cachedGrid = null
+    let cachedZone = null
+    let focusDebounceTimer = null
+
+    function invalidate() {
+        cachedGrid = null
+        cachedZone = null
+    }
+
+    function rows(elements) {
+        if (!elements || !elements.length) return []
+        if (elements.length === 1) return [[elements[0]]]
+
+        // Fast-path: single column vertical list (common for TV channel lists & menus)
+        const first = elements[0]
+        const second = elements[1]
+        if (
+            first &&
+            second &&
+            first.offsetLeft !== undefined &&
+            first.offsetLeft === second.offsetLeft &&
+            first.offsetTop !== second.offsetTop
+        ) {
+            const out = new Array(elements.length)
+            for (let i = 0; i < elements.length; i++) {
+                out[i] = [elements[i]]
+            }
+            return out
+        }
+
+        const out = []
+        let top = null
+        for (let i = 0; i < elements.length; i++) {
+            const elementTop = elements[i].offsetTop
+            if (top === null || Math.abs(elementTop - top) > 8) {
+                out.push([])
+                top = elementTop
+            }
+            out[out.length - 1].push(elements[i])
+        }
+        return out
+    }
+
+    function define(name, items, options) {
+        zones[name] = { items, onEdge: options && options.onEdge }
+        if (current === name) invalidate()
+    }
+
+    // Rows are grouped by offsetTop: what a TV layout needs, and what jsdom lacks.
+    function matrix() {
+        const zone = zones[current]
+        if (!zone) return []
+        if (cachedGrid && cachedZone === current) {
+            if (cachedGrid[0] && cachedGrid[0][0] && cachedGrid[0][0].isConnected !== false) {
+                return cachedGrid
+            }
+        }
+        const items = typeof zone.items === "function" ? zone.items() : zone.items
+        cachedGrid = items || []
+        cachedZone = current
+        return cachedGrid
+    }
+
+    function apply(existingGrid) {
+        const previous = document.querySelector(".focused")
+        if (previous) previous.classList.remove("focused")
+
+        const grid = existingGrid || matrix()
+        if (!grid.length) return
+        if (row >= grid.length) row = grid.length - 1
+        if (row < 0) row = 0
+        const line = grid[row] || []
+        if (!line.length) return
+        if (col >= line.length) col = line.length - 1
+        if (col < 0) col = 0
+
+        const element = line[col]
+        if (!element) return
+        element.classList.add("focused")
+        reveal(element)
+        if (onFocus) {
+            if (focusDebounceTimer) clearTimeout(focusDebounceTimer)
+            focusDebounceTimer = setTimeout(() => {
+                focusDebounceTimer = null
+                onFocus(element)
+            }, 160)
+        }
+    }
+
+    // Scroll only the container that overflows: fast detection via closest
+    function reveal(element) {
+        if (!element) return
+        const box = element.closest
+            ? element.closest(
+                  ".rows, .browse-cats, .browse-channels, #serverList, #seriesEpisodes, #sourceList, #typeList, .rail-items, .screen",
+              )
+            : null
+        if (box) {
+            const itemTop = element.offsetTop
+            const itemBottom = itemTop + element.offsetHeight
+            const boxTop = box.scrollTop
+            const boxBottom = boxTop + box.clientHeight
+            if (itemTop < boxTop) {
+                box.scrollTop = Math.max(0, itemTop - 12)
+            } else if (itemBottom > boxBottom) {
+                box.scrollTop = itemBottom - box.clientHeight + 12
+            }
+            return
+        }
+        if (element.scrollIntoViewIfNeeded) {
+            element.scrollIntoViewIfNeeded(false)
+        } else if (element.scrollIntoView) {
+            element.scrollIntoView({ block: "nearest" })
+        }
+    }
+
+    function set(name, r, c) {
+        if (current !== name) invalidate()
+        current = name
+        row = r || 0
+        col = c || 0
+        apply()
+    }
+
+    function refresh() {
+        invalidate()
+        const previous = document.querySelector(".focused")
+        if (previous && previous.isConnected) {
+            return
+        }
+        apply()
+    }
+
+    function edge(direction) {
+        const zone = zones[current]
+        if (zone && zone.onEdge) zone.onEdge(direction)
+    }
+
+    function move(direction) {
+        if (!zones[current]) return
+        const grid = matrix()
+        if (!grid.length) return
+        const line = grid[row] || []
+
+        if (direction === "up") {
+            if (row > 0) row--
+            else return edge("up")
+        } else if (direction === "down") {
+            if (row < grid.length - 1) row++
+            else return edge("down")
+        } else if (direction === "left") {
+            if (col > 0) col--
+            else return edge("left")
+        } else if (direction === "right") {
+            if (col < line.length - 1) col++
+            else return edge("right")
+        }
+        apply(grid)
+    }
+
+    function focusedElement() {
+        return document.querySelector(".focused")
+    }
+
+    // Focusing a field from inside the key handler is what summons the TV's IME.
+    function select() {
+        const element = focusedElement()
+        if (!element) return
+        if (element.tagName === "INPUT" && element.type === "file") element.click()
+        else if (field(element)) element.focus()
+        else element.click()
+    }
+
+    // Keys belong to the focused text field, textarea included.
+    function field(element) {
+        if (!element) return false
+        if (element.tagName === "TEXTAREA") return true
+        if (element.tagName === "INPUT") {
+            const t = (element.type || "text").toLowerCase()
+            return (
+                t === "text" ||
+                t === "password" ||
+                t === "search" ||
+                t === "email" ||
+                t === "url" ||
+                t === "number" ||
+                t === "tel"
+            )
+        }
+        return false
+    }
+
+    function typing() {
+        return field(document.activeElement)
+    }
+
+    function handle(event) {
+        requestFullscreenOnce()
+
+        if (
+            event.keyCode === KEY.UP ||
+            event.keyCode === KEY.DOWN ||
+            event.keyCode === KEY.LEFT ||
+            event.keyCode === KEY.RIGHT
+        ) {
+            if (document.body) document.body.classList.remove("mouse-active")
+        }
+
+        if (typing()) {
+            const field = document.activeElement
+            if (App.store && App.store.state && App.store.state.screen === "pin") {
+                field.blur()
+            } else if (
+                event.keyCode === KEY.UP ||
+                event.keyCode === KEY.DOWN ||
+                event.keyCode === KEY.BACK ||
+                event.keyCode === 8 ||
+                event.keyCode === 46 ||
+                event.keyCode === 27 ||
+                event.keyCode === 461 ||
+                event.key === "Back" ||
+                event.key === "BrowserBack" ||
+                event.key === "GoBack" ||
+                event.key === "Escape"
+            ) {
+                field.blur()
+            } else {
+                return
+            }
+        }
+
+        if (onKey(event.keyCode, event)) {
+            if (event.preventDefault) event.preventDefault()
+            return
+        }
+
+        switch (event.keyCode) {
+            case KEY.UP:
+                move("up")
+                break
+            case KEY.DOWN:
+                move("down")
+                break
+            case KEY.LEFT:
+                move("left")
+                break
+            case KEY.RIGHT:
+                move("right")
+                break
+            case KEY.ENTER:
+                select()
+                break
+        }
+    }
+
+    // Some firmwares only deliver the non-arrow keys if they are registered first.
+    function listen(handler, options) {
+        onKey = handler
+        onFocus = (options && options.onFocus) || null
+        document.addEventListener("keydown", handle)
+        window.addEventListener("pointerdown", requestFullscreenOnce, { passive: true })
+        window.addEventListener("pointermove", () => {
+            if (document.body) document.body.classList.add("mouse-active")
+        }, { passive: true })
+        try {
+            if (typeof tizen !== "undefined" && tizen.tvinputdevice) {
+                const keys = [
+                    "0",
+                    "1",
+                    "2",
+                    "3",
+                    "4",
+                    "5",
+                    "6",
+                    "7",
+                    "8",
+                    "9",
+                    "ColorF0Red",
+                    "ChannelUp",
+                    "ChannelDown",
+                    "MediaPlay",
+                    "MediaPause",
+                    "MediaPlayPause",
+                    "MediaStop",
+                    "MediaFastForward",
+                    "MediaRewind",
+                ]
+                if (typeof tizen.tvinputdevice.registerKeyBatch === "function") {
+                    tizen.tvinputdevice.registerKeyBatch(keys)
+                } else if (typeof tizen.tvinputdevice.registerKey === "function") {
+                    for (let i = 0; i < keys.length; i++) {
+                        try {
+                            tizen.tvinputdevice.registerKey(keys[i])
+                        } catch {}
+                    }
+                }
+            }
+        } catch {}
+    }
+
+    return {
+        KEY,
+        define,
+        set,
+        refresh,
+        invalidate,
+        move,
+        select,
+        rows,
+        listen,
+        focusedElement,
+    }
+})()

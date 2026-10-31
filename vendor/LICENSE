@@ -1,0 +1,11 @@
+Librerías vendorizadas (se cargan desde el paquete, nunca desde un CDN: una
+petición de red en runtime es lo que dejaba la TV en negro).
+
+preact 10.27.2 — https://preactjs.com
+  Licencia MIT. Copyright (c) 2015-present Jason Miller.
+
+htm 3.1.1 — https://github.com/developit/htm
+  Licencia Apache-2.0. Copyright (c) 2018 Jason Miller.
+
+Ambas están sin modificar. Los textos completos de licencia están en
+preact/preact y developit/htm respectivamente.

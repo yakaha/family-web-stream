@@ -1,0 +1,691 @@
+.rows {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    width: 100%;
+    min-height: 72px;
+    padding: 13px 20px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    background: transparent;
+    color: var(--text-2);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        background-color var(--dur-fast) var(--ease),
+        box-shadow var(--dur-fast) var(--ease);
+}
+
+.row.load-more {
+    justify-content: center;
+    color: var(--text-2);
+}
+
+.row.load-more .row-count {
+    margin-left: auto;
+}
+
+.row.focused {
+    background: var(--surface-2);
+    color: var(--text);
+    box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.row-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.row-name {
+    font-size: 21px;
+    font-weight: 550;
+    line-height: 1.25;
+    letter-spacing: -0.015em;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.row-sub {
+    font-size: 17px;
+    letter-spacing: 0.02em;
+    color: var(--text-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.row-count {
+    flex: none;
+    min-width: 6ch;
+    text-align: right;
+    font-size: 19px;
+    color: var(--text-3);
+}
+
+.row .saved {
+    flex: none;
+    font-size: 19px;
+    color: var(--saved);
+}
+
+.kind {
+    flex: none;
+    display: grid;
+    place-items: center;
+    min-width: 72px;
+    padding: 6px 11px;
+    border: 1px solid var(--line-2);
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-2);
+}
+
+.thumb {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 80px;
+    height: 45px;
+    border-radius: var(--r-sm);
+    background-color: rgba(0, 0, 0, 0.5);
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    box-shadow: inset 0 0 0 1px var(--line);
+    overflow: hidden;
+}
+
+.thumb-letter {
+    font-size: 22px;
+    font-weight: 650;
+    color: var(--text-3);
+}
+
+.row .edit {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: -13px 0;
+    padding: 20px;
+    border: 0;
+    border-radius: 100px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-2);
+    font: inherit;
+    font-size: 19px;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+        background-color var(--dur-fast) var(--ease),
+        color var(--dur-fast) var(--ease);
+}
+
+.row .edit svg {
+    color: currentColor;
+}
+
+.row .edit.focused {
+    background: var(--surface-3);
+    color: var(--text);
+    box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.row.add .kind {
+    border-style: dashed;
+    color: var(--text-3);
+}
+
+.row.add .row-name {
+    color: var(--text-2);
+}
+
+.columns {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(240px, 22%) 1fr;
+    gap: 32px;
+}
+
+.col-groups {
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.row.group {
+    gap: 12px;
+    min-height: 58px;
+    padding: 11px 15px;
+    border-bottom: 0;
+}
+
+.row.group .row-name {
+    font-size: 21px;
+    font-weight: 500;
+    color: var(--text-2);
+}
+
+.row.group.selected .row-name,
+.row.group.selected .row-count {
+    color: var(--text);
+}
+
+.row.group.selected {
+    background: var(--surface);
+    box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.cat-source-name {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.cat-source {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 10px;
+    padding: 24px 20px 9px;
+    border-top: 1px solid var(--line);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-2);
+}
+
+.cat-source:first-child {
+    border-top: 0;
+    margin-top: 0;
+}
+.cat-source .row-count {
+    font-size: 17px;
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--text-3);
+}
+
+.check {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--line-3);
+    border-radius: 9px;
+    color: var(--on-accent);
+    transition:
+        background-color var(--dur-fast) var(--ease),
+        box-shadow var(--dur-fast) var(--ease);
+}
+
+.row.cat.on .check {
+    background: var(--ok);
+    border-color: var(--ok);
+}
+
+.check svg {
+    width: 18px;
+    height: 18px;
+}
+
+.row-now {
+    flex: none;
+    max-width: 32ch;
+    padding-left: 20px;
+    font-size: 18px;
+    color: var(--text-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.row.focused .row-now {
+    color: var(--text-2);
+}
+
+.num {
+    flex: none;
+    width: 3ch;
+    text-align: right;
+    font-size: 19px;
+    color: var(--text-3);
+}
+
+.row.focused .num {
+    color: var(--ok);
+}
+
+.numbuffer {
+    position: fixed;
+    top: 7%;
+    right: 5%;
+    padding: 10px 30px;
+    border-radius: var(--r-lg);
+    background: rgba(8, 8, 7, 0.92);
+    font-size: 66px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--text);
+    box-shadow:
+        inset 0 0 0 1px var(--line-2),
+        0 20px 60px rgba(0, 0, 0, 0.6);
+    z-index: 50;
+    animation: pop var(--dur) var(--ease-out);
+}
+
+.numbuffer::after,
+.modal-card::after {
+    content: "";
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    height: 3px;
+    border-radius: inherit;
+    background: var(--grad-line);
+    pointer-events: none;
+}
+
+@keyframes pop {
+    from {
+        opacity: 0;
+        transform: scale(0.94);
+    }
+}
+
+.browse {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(260px, 24%) minmax(360px, 32%) 1fr;
+    grid-template-rows: minmax(0, 1fr);
+    gap: 22px;
+}
+
+.browse > * {
+    min-width: 0;
+    min-height: 0;
+}
+
+.browse-cats {
+    height: 100%;
+    min-height: 0;
+    overflow-y: scroll;
+    overscroll-behavior-y: contain;
+}
+
+.browse-channels {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.browse-channels > .rows {
+    flex: 1 1 0;
+    height: 100%;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    overscroll-behavior-y: contain;
+}
+
+.row.tvcat.selected .row-name {
+    color: var(--text);
+}
+.row.tvcat.selected {
+    background: var(--surface);
+    box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.browse-preview {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 0;
+    /* A little translucent: it lets the background grid through. The stage is left alone,
+     because the video goes behind it and any layer would wash it out. */
+    background: rgba(0, 0, 0, 0.7);
+}
+
+/* The card cuts the stage rectangle out of itself so the video plane shows through. */
+body.previewing .browse-preview {
+    -webkit-mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+    -webkit-mask-repeat: no-repeat, no-repeat;
+    -webkit-mask-size:
+        100% 100%,
+        var(--hole-w, 100%) var(--hole-h, 100%);
+    -webkit-mask-position:
+        0 0,
+        var(--stage-x, 0) var(--stage-y, 0);
+    -webkit-mask-composite: xor;
+    mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+    mask-repeat: no-repeat, no-repeat;
+    mask-size:
+        100% 100%,
+        var(--hole-w, 100%) var(--hole-h, 100%);
+    mask-position:
+        0 0,
+        var(--stage-x, 0) var(--stage-y, 0);
+    mask-composite: exclude;
+}
+
+body.previewing .preview-stage > :not(.av-surface) {
+    opacity: 0;
+}
+
+body.previewing .preview-stage > .av-surface {
+    opacity: 1;
+}
+
+.preview-empty {
+    display: grid;
+    justify-items: center;
+    gap: 18px;
+    padding: 30px;
+    text-align: center;
+}
+
+.preview-icon {
+    color: var(--text-3);
+    opacity: 0.6;
+}
+.preview-hint {
+    font-size: 19px;
+    color: var(--text-3);
+}
+
+.preview-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 16px;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+}
+
+.preview-stage {
+    position: relative;
+    flex: none;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    display: grid;
+    place-items: center;
+}
+
+.preview-info {
+    display: grid;
+    justify-items: center;
+    align-content: start;
+    gap: 8px;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0 16px;
+    text-align: center;
+}
+
+.preview-logo {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    padding: 14px;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-origin: content-box;
+}
+
+.preview-letter {
+    font-size: 54px;
+    font-weight: 650;
+    color: var(--text-3);
+}
+.preview-name {
+    font-size: 26px;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    max-width: 24ch;
+}
+.preview-group {
+    font-size: 17px;
+    color: var(--text-3);
+}
+.preview-guide {
+    width: min(46ch, 100%);
+    margin-top: 10px;
+    text-align: left;
+}
+.preview-program {
+    font-size: 18px;
+    color: var(--text);
+}
+.preview-next {
+    font-size: 16px;
+    color: var(--text-2);
+    max-width: 46ch;
+}
+
+.preview-open {
+    margin-top: 18px;
+    font-size: 15px;
+    letter-spacing: 0.04em;
+    color: var(--text-3);
+}
+
+.browse-preview:focus,
+.browse-preview.focused {
+    box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+/* Series Layout: Seasons column & Episodes column */
+.series-container {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    gap: 20px;
+    padding: 0 24px 20px;
+}
+
+.series-seasons-col {
+    width: 320px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+}
+
+.series-seasons-header,
+.series-episodes-header {
+    padding: 14px 20px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    border-bottom: 1px solid var(--line);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.series-seasons-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.season-btn {
+    border-bottom: 1px solid var(--line);
+}
+
+.season-btn.active {
+    background: rgba(21, 233, 164, 0.08);
+    border-left: 3px solid var(--mint);
+}
+
+.season-btn.focused {
+    background: var(--surface-2);
+    box-shadow: inset 0 0 0 2px var(--ring);
+}
+
+.season-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 32px;
+    font-size: 14px;
+    font-weight: 750;
+    letter-spacing: 0.04em;
+    color: var(--mint);
+    background: rgba(21, 233, 164, 0.12);
+    border-radius: var(--r-sm);
+}
+
+.series-episodes-col {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+}
+
+.series-episodes-col .series-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+/* VOD Preview Card (Movies & Series Synopsis & Details) */
+.vod-preview-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 24px 28px;
+    gap: 16px;
+    overflow-y: auto;
+    text-align: left;
+    background: rgba(12, 12, 14, 0.95);
+}
+
+.vod-poster-stage {
+    position: relative;
+    width: 100%;
+    max-width: 220px;
+    aspect-ratio: 2 / 3;
+    margin: 0 auto;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #181818;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.vod-poster-stage .vod-poster {
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+}
+
+.vod-details {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+}
+
+.vod-title {
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--text);
+    margin: 0;
+}
+
+.vod-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.vod-tag {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--text-2);
+}
+
+.vod-synopsis-box {
+    max-height: 190px;
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+.vod-synopsis {
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--text-2);
+    margin: 0;
+}
+
+.vod-meta-item {
+    font-size: 14px;
+    color: var(--text-3);
+    margin: 0;
+}
+
+.vod-play-action {
+    margin-top: 14px;
+}
+
+.vod-start-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 28px;
+    font-size: 18px;
+    font-weight: 700;
+    border-radius: 999px;
+    background: linear-gradient(92deg, #febc06, #15e9a4);
+    color: #000;
+    cursor: pointer;
+    border: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.vod-start-btn:focus,
+.vod-start-btn.focused {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 4px #fff, 0 0 20px rgba(21, 233, 164, 0.6);
+    outline: none;
+}

@@ -1,0 +1,73 @@
+@media (prefers-reduced-motion: reduce) {
+    .screen,
+    .numbuffer {
+        animation: none;
+    }
+
+    .rail::after {
+        transition: none;
+    }
+
+    .overlay,
+    .modal-card,
+    .toast,
+    .modal,
+    .loading {
+        animation: fade var(--dur) var(--ease-out);
+        transform: none;
+    }
+
+    .overlay {
+        transform: none;
+    }
+
+    .pending-dot {
+        animation: none;
+    }
+
+    .row.focused,
+    .typecard.focused,
+    .btn.focused,
+    .rail-btn.focused,
+    .btn:active {
+        transform: none;
+    }
+
+    .spinner {
+        animation-duration: 1.2s;
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    .modal {
+        background: #000;
+    }
+    .overlay {
+        background: #000;
+    }
+    .panel {
+        background: #0a0a0a;
+    }
+    .loading {
+        background-image: none;
+    }
+
+    .modal-card {
+        background: #161615;
+    }
+}
+
+@media (prefers-contrast: more) {
+    :root {
+        --line: rgba(255, 255, 255, 0.28);
+        --line-2: rgba(255, 255, 255, 0.45);
+        --line-3: rgba(255, 255, 255, 0.7);
+        --surface-2: rgba(255, 255, 255, 0.14);
+        --text-2: #d4d4d4;
+        --text-3: #a6a6a6;
+    }
+
+    .thumb {
+        background-color: #000;
+    }
+}
