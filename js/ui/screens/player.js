@@ -88,19 +88,24 @@ App.uiScreens = App.uiScreens || {}
             if (!info) return
             const ch = state.playing ? state.playing.channel : null
             const pos = isFinite(info.position) ? Math.max(0, info.position) : 0
+            const chDur = ch && store.parseDuration ? store.parseDuration(ch.durationSecs || ch.duration_secs || ch.duration) : 0
             const dur = (isFinite(info.duration) && info.duration > 0)
                 ? info.duration
-                : (ch && (ch.durationSecs || (ch.duration ? Number(ch.duration) * 60 : 0)) || 0)
+                : chDur
             const currentEl = document.getElementById("vodTimeCurrent")
             const totalEl = document.getElementById("vodTimeTotal")
             const seekEl = document.getElementById("vodSeek")
             if (currentEl) currentEl.textContent = formatPosition(pos)
             if (totalEl && dur > 0) totalEl.textContent = formatPosition(dur)
-            if (seekEl && dur > 0) {
-                seekEl.max = Math.max(1, Math.floor(dur))
-                seekEl.value = Math.min(Math.floor(pos), Math.max(1, Math.floor(dur)))
-                const progress = Math.min(100, (pos / dur) * 100)
-                seekEl.style.setProperty("--seek-progress", `${progress}%`)
+            if (seekEl) {
+                if (dur > 0) {
+                    seekEl.max = Math.max(1, Math.floor(dur))
+                    seekEl.value = Math.min(Math.floor(pos), Math.max(1, Math.floor(dur)))
+                    const progress = Math.min(100, (pos / dur) * 100)
+                    seekEl.style.setProperty("--seek-progress", `${progress}%`)
+                } else {
+                    seekEl.value = Math.floor(pos)
+                }
             }
         }
 
@@ -158,16 +163,17 @@ App.uiScreens = App.uiScreens || {}
         const curDur =
             playback && isFinite(playback.duration) && playback.duration > 0
                 ? playback.duration
-                : channel.durationSecs || (channel.duration ? Number(channel.duration) * 60 : 0) || 0
-        const audioTracks = playback.canSelectAudio
+                : (channel && store.parseDuration ? store.parseDuration(channel.durationSecs || channel.duration_secs || channel.duration) : 0)
+        const audioTracks = playback.tracks
             ? playback.tracks.filter((track) => track.type === "AUDIO")
             : []
-        const subtitleTracks = playback.canSelectSubtitle
+        const subtitleTracks = playback.tracks
             ? playback.tracks.filter((track) => track.type === "SUBTITLE" || track.type === "TEXT")
             : []
         function trackLabel(track, index) {
+            if (!track) return `Piste ${index + 1}`
             const details = track.extra_info || {}
-            return details.language || details.codec || details.track || `Track ${index + 1}`
+            return details.label || details.language || details.codec || details.track || `Piste ${index + 1}`
         }
 
         return html`<section
@@ -371,18 +377,11 @@ App.uiScreens = App.uiScreens || {}
                                                     onClick=${function () {
                                                         const next =
                                                             (audioChoice + 1) % audioTracks.length
-                                                        if (
-                                                            store.selectPlaybackTrack(
-                                                                "AUDIO",
-                                                                audioTracks[next].index,
-                                                            )
-                                                        ) {
-                                                            setAudioChoice(next)
-                                                            show()
-                                                        } else
-                                                            store.notify(
-                                                                "Audio track selection is not supported",
-                                                            )
+                                                        const trIndex = audioTracks[next].index !== undefined ? audioTracks[next].index : next
+                                                        store.selectPlaybackTrack("AUDIO", trIndex)
+                                                        setAudioChoice(next)
+                                                        store.notify(`Audio : ${trackLabel(audioTracks[next], next)}`)
+                                                        show()
                                                     }}
                                                 >
                                                     <span class="vod-action-icon">♫</span
@@ -421,19 +420,14 @@ App.uiScreens = App.uiScreens || {}
                                                         const trackIndex =
                                                             next < 0
                                                                 ? -1
-                                                                : subtitleTracks[next].index
-                                                        if (
-                                                            store.selectPlaybackTrack(
-                                                                "SUBTITLE",
-                                                                trackIndex,
-                                                            )
-                                                        ) {
-                                                            setSubtitleChoice(next)
-                                                            show()
-                                                        } else
-                                                            store.notify(
-                                                                "Subtitle selection is not supported",
-                                                            )
+                                                                : (subtitleTracks[next].index !== undefined ? subtitleTracks[next].index : next)
+                                                        store.selectPlaybackTrack(
+                                                            "SUBTITLE",
+                                                            trackIndex,
+                                                        )
+                                                        setSubtitleChoice(next)
+                                                        store.notify(next < 0 ? "Sous-titres désactivés" : `Sous-titres : ${trackLabel(subtitleTracks[next], next)}`)
+                                                        show()
                                                     }}
                                                 >
                                                     <span class="vod-action-icon">CC</span

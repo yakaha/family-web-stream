@@ -283,22 +283,53 @@ App.store = (function () {
         return names
     }
 
+    function parseDuration(val) {
+        if (!val) return 0
+        if (typeof val === "number") {
+            if (!isFinite(val) || val <= 0) return 0
+            return val > 300 ? val : val * 60
+        }
+        const str = String(val).trim()
+        if (!str) return 0
+        if (str.includes(":")) {
+            const parts = str.split(":").map(Number)
+            if (parts.some(isNaN)) return 0
+            if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2]
+            if (parts.length === 2) return parts[0] * 60 + parts[1]
+        }
+        const num = parseFloat(str)
+        if (!isFinite(num) || num <= 0) return 0
+        return num > 300 ? num : num * 60
+    }
+
     function categoryPriority(name) {
-        if (/[\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff]/.test(name)) return 1
-        if (
-            /[éèêëàâîïôùûüçœæ]/i.test(name) ||
-            /(?:^|[\s\[\]()_-])(?:fr|vf|french|français|francais|france|films?|cinéma|cinema|enfants|jeunesse|dessins|informations|actualités|actualites)(?:$|[\s\[\]()_-])/i.test(
-                name,
-            )
-        )
-            return 0
+        if (!name) return 3
+        const str = (typeof name === "string" ? name : name.name || "").trim().toLowerCase()
+        if (!str) return 3
+
+        // Priority 0: French categories (FR, France, French, Français, Francais, VF, VOSTFR)
+        const isFrench =
+            /^((\||\b|\[|\()?\s*fr\b|\bfrance\b|\bfrench\b|\bfrancais\b|\bfrançais\b|\bvf\b|\bvostfr\b)/i.test(str) ||
+            /(?:^|[\s\[\]()_:\-\|\/])(?:fr|france|french|francais|français|vf|vostfr)(?:$|[\s\[\]()_:\-\|\/])/i.test(str)
+        if (isFrench) return 0
+
+        // Priority 1: Arabic categories (AR, Arabic, Arabe, Nilesat, or Arabic Unicode script)
+        const isArabic =
+            /[\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff]/.test(str) ||
+            /^((\||\b|\[|\()?\s*ar\b|\barabe\b|\barabic\b|\bnilesat\b)/i.test(str) ||
+            /(?:^|[\s\[\]()_:\-\|\/])(?:ar|arabe|arabic|nilesat)(?:$|[\s\[\]()_:\-\|\/])/i.test(str)
+        if (isArabic) return 1
+
         return 2
     }
 
     function compareCategories(first, second) {
-        return (
-            categoryPriority(first) - categoryPriority(second) || first.localeCompare(second, "en")
-        )
+        const n1 = typeof first === "string" ? first : (first && first.name) || ""
+        const n2 = typeof second === "string" ? second : (second && second.name) || ""
+        const p1 = categoryPriority(n1)
+        const p2 = categoryPriority(n2)
+        if (p1 !== p2) return p1 - p2
+        return n1.localeCompare(n2, "fr", { sensitivity: "base", numeric: true })
     }
 
     function sources() {
@@ -888,6 +919,9 @@ App.store = (function () {
                 const catChans = (state.channels[list.id] || []).filter(
                     (c) => matchesMedia(c, state.mediaType) && (c.group || "Otros") === categoryName,
                 )
+                if (state.screen === "tv" && state.mediaType === "live" && !state.preview && catChans.length > 0) {
+                    selectPreview(catChans[0])
+                }
                 emit()
                 return catChans
             })
@@ -1028,6 +1062,7 @@ App.store = (function () {
                     state.groups[list.id] = categories.map((c) => c.name)
                     markMediaLoaded(list.id, requestMediaType)
                     state.lists = state.lists.concat([list])
+                    invalidate()
                     write(KEYS.lists, state.lists)
                     write("ts.categories", state.categories)
                     delete state.loadProgress.draft
@@ -1126,6 +1161,7 @@ App.store = (function () {
                     markMediaLoaded(draft.id, requestMediaType)
                     deleteCachedCatalogs(draft.id).catch(warnCatalogCache)
                     state.lists = state.lists.map((item) => (item.id === list.id ? draft : item))
+                    invalidate()
                     write(KEYS.lists, state.lists)
                     write("ts.categories", state.categories)
                     delete state.loadProgress.draft
@@ -1404,6 +1440,7 @@ App.store = (function () {
             .then((result) => {
                 hideNotice()
                 state.pinLoading = false
+                state.pinSubmitted = false
                 openTv()
                 const managed = state.lists.find((list) => list.firebaseManaged)
                 const catCount =
@@ -1735,16 +1772,22 @@ App.store = (function () {
     }
 
     function backToTv() {
-        let index = 0
+        let catIndex = 0
         const rows = tvCategories().rows
         for (let i = 0; i < rows.length; i++) {
             if (rows[i].name === state.catName) {
-                index = i
+                catIndex = i
                 break
             }
         }
         set({ screen: "tv" })
-        focus("tvCats", index)
+        const items = visibleTvCategory().items
+        let channelRow = 0
+        if (items && items.length && state.preview) {
+            const idx = items.findIndex((item) => sameChannel(item, state.preview))
+            if (idx !== -1) channelRow = idx
+        }
+        focus("tvChannels", channelRow, 0)
     }
 
     function openTvCategory(name) {
@@ -2302,15 +2345,22 @@ App.store = (function () {
         if (origin && origin.screen === "tv" && currentChannel) {
             const validSource =
                 origin.tvSource && listById(origin.tvSource) ? origin.tvSource : null
+            const targetCat = currentChannel.group || origin.category || state.catName
             set({
                 screen: "tv",
                 mediaType: origin.mediaType || "live",
-                catName: origin.category || state.catName,
+                catName: targetCat,
                 tvSource: validSource,
                 preview: currentChannel,
                 previewRequested: false,
             })
-            focus(origin.zone || "tvChannels", origin.row || 0, 0)
+            const items = visibleTvCategory().items
+            let channelRow = origin.row || 0
+            if (items && items.length) {
+                const idx = items.findIndex((item) => sameChannel(item, currentChannel))
+                if (idx !== -1) channelRow = idx
+            }
+            focus(origin.zone || "tvChannels", channelRow, 0)
             return
         }
 
@@ -2405,7 +2455,8 @@ App.store = (function () {
                 }
             }
             const needle = searchOf("tv").trim().toLowerCase()
-            const rows = catList.map((cat) => ({
+            const sortedCatList = catList.slice().sort((a, b) => compareCategories(a.name, b.name))
+            const rows = sortedCatList.map((cat) => ({
                 name: cat.name,
                 id: cat.id,
                 count: channelCounts[cat.name] || cat.count || 0,
@@ -2576,25 +2627,39 @@ App.store = (function () {
             notify("Le direct ne supporte pas l'avance rapide")
             return false
         }
+        const ch = state.playing.channel
         const info =
             state.playbackInfo ||
             (App.player && App.player.playbackInfo()) || { position: 0, duration: 0 }
-        const duration = Number(info.duration) || 0
-        if (duration <= 5) return false
+        const chDur = ch ? parseDuration(ch.durationSecs || ch.duration_secs || ch.duration) : 0
+        const duration = (isFinite(info.duration) && info.duration > 0) ? info.duration : chDur
 
         const currentPos =
-            virtualSeekTarget !== null ? virtualSeekTarget : Number(info.position) || 0
-        virtualSeekTarget = Math.max(0, Math.min(duration, currentPos + deltaSeconds))
-        state.virtualSeekPosition = virtualSeekTarget
+            virtualSeekTarget !== null
+                ? virtualSeekTarget
+                : (Number(info.position) || (App.player && App.player.currentTime && App.player.currentTime()) || 0)
+
+        let target = currentPos + deltaSeconds
+        if (duration > 0) {
+            target = Math.max(0, Math.min(duration, target))
+        } else {
+            target = Math.max(0, target)
+        }
+        virtualSeekTarget = target
+        state.virtualSeekPosition = target
 
         const currentEl = document.getElementById("vodTimeCurrent")
         const seekEl = document.getElementById("vodSeek")
         if (currentEl) currentEl.textContent = formatPosition(virtualSeekTarget)
         if (seekEl) {
-            seekEl.value = Math.floor(virtualSeekTarget)
-            const progress =
-                duration > 0 ? Math.min(100, (virtualSeekTarget / duration) * 100) : 0
-            seekEl.style.setProperty("--seek-progress", `${progress}%`)
+            if (duration > 0) {
+                seekEl.max = Math.max(1, Math.floor(duration))
+                seekEl.value = Math.floor(virtualSeekTarget)
+                const progress = Math.min(100, (virtualSeekTarget / duration) * 100)
+                seekEl.style.setProperty("--seek-progress", `${progress}%`)
+            } else {
+                seekEl.value = Math.floor(virtualSeekTarget)
+            }
         }
 
         const sign = deltaSeconds > 0 ? "+" : ""
@@ -2610,7 +2675,7 @@ App.store = (function () {
             }
             virtualSeekTarget = null
             state.virtualSeekPosition = null
-        }, 320)
+        }, 280)
 
         return true
     }
@@ -2732,5 +2797,7 @@ App.store = (function () {
         visibleRecents,
         visibleFavorites,
         stats,
+        parseDuration,
+        categoryPriority,
     }
 })()

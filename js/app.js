@@ -144,14 +144,28 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
                     ) {
                         store.openTvCategory(focused.dataset.group)
                     }
-                    tv.set("tvChannels", 0, 0)
+                    const items = store.visibleTvCategory().items
+                    let chIdx = 0
+                    if (items && items.length && store.state.preview) {
+                        const found = items.findIndex((c) => (c.id && c.id === store.state.preview.id) || (c.url && c.url === store.state.preview.url) || c.name === store.state.preview.name)
+                        if (found !== -1) chIdx = found
+                    }
+                    tv.set("tvChannels", chIdx, 0)
                 } else if (dir === "left") tv.set("rail", 0, 0)
             },
         })
 
         zone("tvChannels", "#tvChannels .channel", {
             onEdge: function (dir) {
-                if (dir === "left") tv.set("tvCats", 0, 0)
+                if (dir === "left") {
+                    const rows = store.tvCategories().rows
+                    let catIdx = 0
+                    if (rows && rows.length && store.state.catName) {
+                        const found = rows.findIndex((r) => r.name === store.state.catName)
+                        if (found !== -1) catIdx = found
+                    }
+                    tv.set("tvCats", catIdx, 0)
+                }
                 else if (dir === "right") {
                     if (document.getElementById("playVodBtn")) {
                         tv.set("tvVodAction", 0, 0)
@@ -165,13 +179,29 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
 
         zone("tvVodAction", "#playVodBtn", {
             onEdge: function (dir) {
-                if (dir === "left") tv.set("tvChannels", 0, 0)
+                if (dir === "left") {
+                    const items = store.visibleTvCategory().items
+                    let chIdx = 0
+                    if (items && items.length && store.state.preview) {
+                        const found = items.findIndex((c) => (c.id && c.id === store.state.preview.id) || (c.url && c.url === store.state.preview.url) || c.name === store.state.preview.name)
+                        if (found !== -1) chIdx = found
+                    }
+                    tv.set("tvChannels", chIdx, 0)
+                }
             },
         })
 
         zone("tvPreview", "#tvPreview", {
             onEdge: function (dir) {
-                if (dir === "left") tv.set("tvChannels", 0, 0)
+                if (dir === "left") {
+                    const items = store.visibleTvCategory().items
+                    let chIdx = 0
+                    if (items && items.length && store.state.preview) {
+                        const found = items.findIndex((c) => (c.id && c.id === store.state.preview.id) || (c.url && c.url === store.state.preview.url) || c.name === store.state.preview.name)
+                        if (found !== -1) chIdx = found
+                    }
+                    tv.set("tvChannels", chIdx, 0)
+                }
             },
         })
 
@@ -315,6 +345,19 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
             store.goHome()
             return true
         }
+        if (store.state.screen === "tv") {
+            const focused = document.querySelector(".focused")
+            if (focused && (focused.closest("#tvChannels") || focused.closest("#previewCard") || focused.id === "playVodBtn" || focused.closest("#tvPreview"))) {
+                const rows = store.tvCategories().rows
+                let catIdx = 0
+                if (rows && rows.length && store.state.catName) {
+                    const found = rows.findIndex((r) => r.name === store.state.catName)
+                    if (found !== -1) catIdx = found
+                }
+                tv.set("tvCats", catIdx, 0)
+                return true
+            }
+        }
         if (store.state.screen !== "home") {
             store.goHome()
             return true
@@ -374,6 +417,7 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
     }
 
     function onKey(code, event) {
+        if (App.player && App.player.unmute) App.player.unmute()
         if (store.state.screen === "pin") {
             if ([tv.KEY.UP, tv.KEY.DOWN, tv.KEY.LEFT, tv.KEY.RIGHT].indexOf(code) !== -1)
                 return false
@@ -630,6 +674,9 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
         store.init()
         defineZones()
         tv.listen(onKey, { onFocus: store.focusChanged })
+        window.addEventListener("pointerdown", () => {
+            if (App.player && App.player.unmute) App.player.unmute()
+        }, { passive: true })
         ui.render()
         store.focus("pinGrid")
         tv.set("pinGrid", 0, 0)

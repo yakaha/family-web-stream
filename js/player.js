@@ -386,6 +386,8 @@ App.player = (function () {
             return
         }
         destroyTsPlayer()
+        video.muted = false
+        video.volume = 1.0
 
         const streamUrl = proxifyStream(url)
         const isVodChannel =
@@ -427,10 +429,18 @@ App.player = (function () {
                 tsPlayer.on(mpegts.Events.ERROR, (type, detail, info) => {
                     if (generation !== playbackGeneration) return
                     const str = String(detail || info || "").toLowerCase()
-                    if (!audioDisabled && (str.includes("ac-3") || str.includes("ac3") || str.includes("addsourcebuffer"))) {
-                        console.warn("AC-3 audio unsupported, retrying video only...")
+                    if (!audioDisabled && (str.includes("ac-3") || str.includes("ac3") || str.includes("addsourcebuffer") || str.includes("audio"))) {
+                        console.warn("MPEG-TS audio buffer issue, trying direct hardware audio...", str)
                         destroyTsPlayer()
-                        playWithVideo(url, resumeAt, generation, true)
+                        video.muted = false
+                        video.volume = 1.0
+                        video.src = streamUrl
+                        video.play()
+                            .then(() => started(generation))
+                            .catch((directErr) => {
+                                console.warn("Direct video fallback failed, using video-only mpegts:", directErr)
+                                playWithVideo(url, resumeAt, generation, true)
+                            })
                         return
                     }
                     console.warn("mpegts error:", type, detail, info)
@@ -590,14 +600,29 @@ App.player = (function () {
         playWithVideo(url, Number(resumeAt) || 0, generation)
     }
 
+    function unmute() {
+        if (video && video.muted) {
+            video.muted = false
+            video.volume = 1.0
+        }
+    }
+
+    function currentTime() {
+        const AV = avplay()
+        if (AV) {
+            try {
+                return Math.max(0, Number(AV.getCurrentTime()) / 1000 || 0)
+            } catch {}
+        }
+        return video ? Number(video.currentTime) || 0 : 0
+    }
+
     function playbackInfo() {
         const AV = avplay()
         if (AV) {
             let position = 0
             let duration = 0
             let tracks = []
-            const canSeek =
-                typeof AV.seekTo === "function" && duration > 5 && isFinite(duration)
             try {
                 position = Math.max(0, Number(AV.getCurrentTime()) / 1000 || 0)
             } catch {}
@@ -608,6 +633,8 @@ App.player = (function () {
                 const available = AV.getTotalTrackInfo()
                 tracks = Array.isArray(available) ? available : []
             } catch {}
+            const canSeek =
+                typeof AV.seekTo === "function" && duration > 5 && isFinite(duration)
             return {
                 position,
                 duration,
@@ -634,30 +661,39 @@ App.player = (function () {
         try {
             const audioTracks = video.audioTracks
             for (let i = 0; audioTracks && i < audioTracks.length; i++) {
+                const at = audioTracks[i]
                 tracks.push({
                     type: "AUDIO",
                     index: i,
-                    extra_info: { language: audioTracks[i].language || "" },
+                    extra_info: {
+                        language: at.language || "",
+                        label: at.label || at.language || `Piste ${i + 1}`,
+                    },
                 })
             }
         } catch {}
         try {
             const textTracks = video.textTracks
             for (let i = 0; textTracks && i < textTracks.length; i++) {
+                const tt = textTracks[i]
                 tracks.push({
                     type: "SUBTITLE",
                     index: i,
-                    extra_info: { language: textTracks[i].language || "" },
+                    extra_info: {
+                        language: tt.language || "",
+                        label: tt.label || tt.language || `Sous-titre ${i + 1}`,
+                    },
                 })
             }
         } catch {}
+        const dur = isFinite(video.duration) && video.duration > 0 ? video.duration : 0
         return {
             position: Number(video.currentTime) || 0,
-            duration: Number(video.duration) || 0,
+            duration: dur,
             tracks,
-            canSeek: isFinite(video.duration) && video.duration > 5,
-            canSelectAudio: !!video.audioTracks,
-            canSelectSubtitle: !!video.textTracks,
+            canSeek: isFinite(dur) && dur > 5,
+            canSelectAudio: tracks.some((t) => t.type === "AUDIO"),
+            canSelectSubtitle: tracks.some((t) => t.type === "SUBTITLE"),
         }
     }
 
@@ -705,10 +741,19 @@ App.player = (function () {
                 return false
             }
         }
-        if (!video || !isFinite(video.duration)) return false
-        video.currentTime = Math.min(target, video.duration)
-        if (onDone) onDone()
-        return true
+        if (!video) return false
+        try {
+            if (isFinite(video.duration) && video.duration > 0) {
+                video.currentTime = Math.min(target, video.duration)
+            } else {
+                video.currentTime = target
+            }
+            if (onDone) onDone()
+            return true
+        } catch (err) {
+            console.warn("video seek error:", err)
+            return false
+        }
     }
 
     function selectTrack(type, index) {
@@ -724,15 +769,28 @@ App.player = (function () {
             }
         }
         if (!video) return false
-        const collection = type === "AUDIO" ? video.audioTracks : video.textTracks
-        if (!collection || !collection[index]) return false
-        if (type === "AUDIO") {
-            for (let i = 0; i < collection.length; i++) collection[i].enabled = i === index
-        } else {
-            for (let i = 0; i < collection.length; i++)
+        if (type === "SUBTITLE") {
+            const collection = video.textTracks
+            if (!collection) return false
+            if (index < 0) {
+                for (let i = 0; i < collection.length; i++) collection[i].mode = "disabled"
+                return true
+            }
+            if (!collection[index]) return false
+            for (let i = 0; i < collection.length; i++) {
                 collection[i].mode = i === index ? "showing" : "disabled"
+            }
+            return true
         }
-        return true
+        if (type === "AUDIO") {
+            const collection = video.audioTracks
+            if (!collection || !collection[index]) return false
+            for (let i = 0; i < collection.length; i++) {
+                collection[i].enabled = i === index
+            }
+            return true
+        }
+        return false
     }
 
     function isPlayingUrl(url) {
@@ -800,6 +858,8 @@ App.player = (function () {
         toggle,
         state,
         playbackInfo,
+        currentTime,
+        unmute,
         seekTo,
         selectTrack,
         isPlayingUrl,
