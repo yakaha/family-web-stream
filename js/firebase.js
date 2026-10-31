@@ -18,7 +18,8 @@ App.firebase = (function () {
                 /^192\.168\./.test(host) ||
                 /^10\./.test(host) ||
                 /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
-                port === "8090"
+                port === "8090" ||
+                host.includes("onrender.com")
             if (isLocal && /^https?:\/\//i.test(url) && !url.startsWith(window.location.origin)) {
                 return `${window.location.origin}/proxy?url=${encodeURIComponent(url)}`
             }
