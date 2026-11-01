@@ -129,6 +129,14 @@ App.tv = (function () {
         if (!element) return
         element.classList.add("focused")
         reveal(element)
+        if (!element.hasAttribute("tabindex")) {
+            element.setAttribute("tabindex", "0")
+        }
+        try {
+            if (typeof element.focus === "function") {
+                element.focus({ preventScroll: true })
+            }
+        } catch {}
         if (onFocus) {
             if (focusDebounceTimer) clearTimeout(focusDebounceTimer)
             focusDebounceTimer = setTimeout(() => {
@@ -211,6 +219,42 @@ App.tv = (function () {
 
     function focusedElement() {
         return document.querySelector(".focused")
+    }
+
+    function syncGridWithElement(element) {
+        if (!element) return
+        const currentGrid = matrix()
+        for (let r = 0; r < currentGrid.length; r++) {
+            const line = currentGrid[r] || []
+            for (let c = 0; c < line.length; c++) {
+                const item = line[c]
+                if (item === element || (item && item.contains && item.contains(element))) {
+                    row = r
+                    col = c
+                    return
+                }
+            }
+        }
+        for (const zoneName in zones) {
+            if (zoneName === current) continue
+            const z = zones[zoneName]
+            const items = typeof z.items === "function" ? z.items() : z.items
+            if (!items || !items.length) continue
+            for (let r = 0; r < items.length; r++) {
+                const line = items[r] || []
+                for (let c = 0; c < line.length; c++) {
+                    const item = line[c]
+                    if (item === element || (item && item.contains && item.contains(element))) {
+                        current = zoneName
+                        row = r
+                        col = c
+                        cachedGrid = items
+                        cachedZone = zoneName
+                        return
+                    }
+                }
+            }
+        }
     }
 
     // Focusing a field from inside the key handler is what summons the TV's IME.
@@ -323,6 +367,72 @@ App.tv = (function () {
             },
             { passive: true },
         )
+
+        const interactiveSelector =
+            ".row, .pin-key, .pin-action, .btn, .server-card, .season-btn, .rail-btn, .rail-src, .type, .cat, .channel, .action, .zapcat, .zapch, input, button, select, [tabindex]"
+
+        document.addEventListener(
+            "pointerover",
+            (e) => {
+                const target = e.target
+                if (!target || !target.closest) return
+                const focusable = target.closest(interactiveSelector)
+                if (focusable && !focusable.classList.contains("focused")) {
+                    const prev = document.querySelector(".focused")
+                    if (prev && prev !== focusable) prev.classList.remove("focused")
+                    focusable.classList.add("focused")
+                    try {
+                        if (typeof focusable.focus === "function") focusable.focus({ preventScroll: true })
+                    } catch {}
+                    syncGridWithElement(focusable)
+                    if (onFocus) {
+                        if (focusDebounceTimer) clearTimeout(focusDebounceTimer)
+                        focusDebounceTimer = setTimeout(() => {
+                            focusDebounceTimer = null
+                            onFocus(focusable)
+                        }, 160)
+                    }
+                }
+            },
+            { passive: true },
+        )
+
+        document.addEventListener(
+            "pointerdown",
+            (e) => {
+                requestFullscreenOnce()
+                const target = e.target
+                if (!target || !target.closest) return
+                const focusable = target.closest(interactiveSelector)
+                if (focusable) {
+                    const prev = document.querySelector(".focused")
+                    if (prev && prev !== focusable) prev.classList.remove("focused")
+                    focusable.classList.add("focused")
+                    try {
+                        if (typeof focusable.focus === "function") focusable.focus({ preventScroll: true })
+                    } catch {}
+                    syncGridWithElement(focusable)
+                }
+            },
+            { passive: true },
+        )
+
+        document.addEventListener(
+            "focusin",
+            (e) => {
+                const target = e.target
+                if (!target || !target.closest) return
+                const focusable = target.closest(interactiveSelector)
+                if (focusable && !focusable.classList.contains("focused")) {
+                    const prev = document.querySelector(".focused")
+                    if (prev && prev !== focusable) prev.classList.remove("focused")
+                    focusable.classList.add("focused")
+                    reveal(focusable)
+                    syncGridWithElement(focusable)
+                }
+            },
+            true,
+        )
         try {
             if (typeof tizen !== "undefined" && tizen.tvinputdevice) {
                 const keys = [
@@ -370,5 +480,6 @@ App.tv = (function () {
         rows,
         listen,
         focusedElement,
+        syncGridWithElement,
     }
 })()

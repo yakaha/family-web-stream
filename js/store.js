@@ -2382,7 +2382,7 @@ App.store = (function () {
         goHome()
     }
 
-    function notify(message) {
+    function notify(message, duration) {
         toastSeq++
         state.toast = { message, id: toastSeq }
         emit()
@@ -2390,7 +2390,7 @@ App.store = (function () {
         toastTimer = setTimeout(() => {
             state.toast = null
             emit()
-        }, TOAST_MS)
+        }, duration || TOAST_MS)
     }
 
     function setLoading(visible, label) {

@@ -680,6 +680,21 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
         ui.render()
         store.focus("pinGrid")
         tv.set("pinGrid", 0, 0)
+
+        const isSamsungTV = /Tizen|SMART-TV|SamsungBrowser/i.test(navigator.userAgent)
+        if (isSamsungTV) {
+            try {
+                if (!sessionStorage.getItem("fws_samsung_tip_seen")) {
+                    sessionStorage.setItem("fws_samsung_tip_seen", "1")
+                    setTimeout(() => {
+                        store.notify(
+                            "💡 Samsung TV : Pour naviguer avec les flèches sans curseur, cliquez sur l'icône [Pointeur / Flèches] tout en haut du navigateur Samsung.",
+                            10000,
+                        )
+                    }, 1200)
+                }
+            } catch {}
+        }
     }
 
     document.addEventListener("DOMContentLoaded", start)
