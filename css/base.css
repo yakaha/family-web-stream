@@ -10,6 +10,12 @@ body {
     overflow: hidden;
 }
 
+/* Mode télécommande TV : masquer totalement le curseur dès qu'on utilise les flèches */
+body:not(.mouse-active),
+body:not(.mouse-active) * {
+    cursor: none !important;
+}
+
 body,
 .loading {
     background-color: var(--black);

@@ -248,14 +248,8 @@ App.tv = (function () {
     function handle(event) {
         requestFullscreenOnce()
 
-        if (
-            event.keyCode === KEY.UP ||
-            event.keyCode === KEY.DOWN ||
-            event.keyCode === KEY.LEFT ||
-            event.keyCode === KEY.RIGHT
-        ) {
-            if (document.body) document.body.classList.remove("mouse-active")
-        }
+        // Touche pressée sur la télécommande : cacher immédiatement le curseur
+        if (document.body) document.body.classList.remove("mouse-active")
 
         if (typing()) {
             const field = document.activeElement
@@ -285,34 +279,50 @@ App.tv = (function () {
             return
         }
 
-        switch (event.keyCode) {
-            case KEY.UP:
-                move("up")
-                break
-            case KEY.DOWN:
-                move("down")
-                break
-            case KEY.LEFT:
-                move("left")
-                break
-            case KEY.RIGHT:
-                move("right")
-                break
-            case KEY.ENTER:
-                select()
-                break
+        const key = event.key || ""
+        const isUp = event.keyCode === KEY.UP || key === "ArrowUp" || key === "Up"
+        const isDown = event.keyCode === KEY.DOWN || key === "ArrowDown" || key === "Down"
+        const isLeft = event.keyCode === KEY.LEFT || key === "ArrowLeft" || key === "Left"
+        const isRight = event.keyCode === KEY.RIGHT || key === "ArrowRight" || key === "Right"
+        const isEnter = event.keyCode === KEY.ENTER || key === "Enter" || key === "Select" || key === "Ok"
+
+        if (isUp) {
+            move("up")
+            if (event.preventDefault) event.preventDefault()
+        } else if (isDown) {
+            move("down")
+            if (event.preventDefault) event.preventDefault()
+        } else if (isLeft) {
+            move("left")
+            if (event.preventDefault) event.preventDefault()
+        } else if (isRight) {
+            move("right")
+            if (event.preventDefault) event.preventDefault()
+        } else if (isEnter) {
+            select()
+            if (event.preventDefault) event.preventDefault()
         }
     }
 
     // Some firmwares only deliver the non-arrow keys if they are registered first.
+    let lastPointerX = 0
+    let lastPointerY = 0
     function listen(handler, options) {
         onKey = handler
         onFocus = (options && options.onFocus) || null
         document.addEventListener("keydown", handle)
         window.addEventListener("pointerdown", requestFullscreenOnce, { passive: true })
-        window.addEventListener("pointermove", () => {
-            if (document.body) document.body.classList.add("mouse-active")
-        }, { passive: true })
+        window.addEventListener(
+            "pointermove",
+            (e) => {
+                if (Math.abs(e.clientX - lastPointerX) > 8 || Math.abs(e.clientY - lastPointerY) > 8) {
+                    lastPointerX = e.clientX
+                    lastPointerY = e.clientY
+                    if (document.body) document.body.classList.add("mouse-active")
+                }
+            },
+            { passive: true },
+        )
         try {
             if (typeof tizen !== "undefined" && tizen.tvinputdevice) {
                 const keys = [
