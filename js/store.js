@@ -793,8 +793,19 @@ App.store = (function () {
         if (!list) return Promise.resolve()
         const isRemote = listKind(list) === "stalker" || listKind(list) === "xtream"
         if (isRemote) {
-            return ensureCategories(listId, "movie")
-                .then(() => ensureCategories(listId, "series"))
+            return App.api
+                .loadCategories(list, "movie")
+                .then((cats) => {
+                    state.categories[listId] = state.categories[listId] || {}
+                    state.categories[listId].movie = cats
+                    write("ts.categories", state.categories)
+                    return App.api.loadCategories(list, "series")
+                })
+                .then((cats) => {
+                    state.categories[listId] = state.categories[listId] || {}
+                    state.categories[listId].series = cats
+                    write("ts.categories", state.categories)
+                })
                 .catch((err) => console.warn("Could not pre-fetch VOD/Series categories:", err))
         }
         return Promise.resolve()
@@ -1068,7 +1079,9 @@ App.store = (function () {
                     delete state.loadProgress.draft
                     hideNotice()
                     notify(`Ajouté : ${formatCount(categories.length)} catégories prêtes`)
-                    goHome()
+                    if (!list.firebaseManaged) {
+                        goHome()
+                    }
                     return []
                 })
                 .catch((error) => {
@@ -1167,7 +1180,9 @@ App.store = (function () {
                     delete state.loadProgress.draft
                     hideNotice()
                     notify(`Mis à jour : ${formatCount(categories.length)} catégories prêtes`)
-                    goHome()
+                    if (!list.firebaseManaged && !draft.firebaseManaged) {
+                        goHome()
+                    }
                     return []
                 })
                 .catch((error) => {

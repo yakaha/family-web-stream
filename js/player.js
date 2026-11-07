@@ -110,8 +110,12 @@ App.player = (function () {
         }
         if (rect !== undefined) lastRect = rect
         const surfaceEl = document.getElementById("videoSurface")
-        const isPlayerScreen = App.store && App.store.state && App.store.state.screen === "player"
-        const isPreview = !isPlayerScreen && !!(lastRect && lastRect.w > 2 && lastRect.h > 2)
+        const currentScreen = App.store && App.store.state ? App.store.state.screen : "pin"
+        const isPlayerScreen = currentScreen === "player"
+        const stage = currentScreen === "tv" ? document.getElementById("previewStage") : null
+        const box = stage && stage.getBoundingClientRect ? stage.getBoundingClientRect() : null
+        const hasValidBox = box && box.width > 10 && box.height > 10
+        const isPreview = currentScreen === "tv" && hasValidBox && !!(lastRect && lastRect.w > 2 && lastRect.h > 2)
 
         if (surfaceEl) {
             if (isPlayerScreen) {
@@ -124,27 +128,22 @@ App.player = (function () {
             } else if (isPreview) {
                 surfaceEl.classList.remove("hidden", "fullscreen")
                 surfaceEl.classList.add("preview")
-                const stage = document.getElementById("previewStage")
-                const box = stage && stage.getBoundingClientRect ? stage.getBoundingClientRect() : null
-                if (box && box.width > 2) {
-                    surfaceEl.style.left = `${Math.round(box.left)}px`
-                    surfaceEl.style.top = `${Math.round(box.top)}px`
-                    surfaceEl.style.width = `${Math.round(box.width)}px`
-                    surfaceEl.style.height = `${Math.round(box.height)}px`
-                } else if (lastRect) {
-                    surfaceEl.style.left = `${Math.round(lastRect.x)}px`
-                    surfaceEl.style.top = `${Math.round(lastRect.y)}px`
-                    surfaceEl.style.width = `${Math.round(lastRect.w)}px`
-                    surfaceEl.style.height = `${Math.round(lastRect.h)}px`
-                }
+                surfaceEl.style.left = `${Math.round(box.left)}px`
+                surfaceEl.style.top = `${Math.round(box.top)}px`
+                surfaceEl.style.width = `${Math.round(box.width)}px`
+                surfaceEl.style.height = `${Math.round(box.height)}px`
             } else {
                 surfaceEl.classList.remove("fullscreen", "preview")
                 surfaceEl.classList.add("hidden")
+                surfaceEl.style.left = "0px"
+                surfaceEl.style.top = "0px"
+                surfaceEl.style.width = "0px"
+                surfaceEl.style.height = "0px"
             }
         }
         const AV = avplay()
         if (AV) {
-            const area = isPreview ? lastRect : isPlayerScreen ? { x: 0, y: 0, w: 1920, h: 1080 } : { x: 0, y: 0, w: 0, h: 0 }
+            const area = isPreview && box ? { x: box.left, y: box.top, w: box.width, h: box.height } : isPlayerScreen ? { x: 0, y: 0, w: 1920, h: 1080 } : { x: 0, y: 0, w: 0, h: 0 }
             try {
                 AV.setDisplayRect(
                     Math.round(area.x),
@@ -361,10 +360,15 @@ App.player = (function () {
         }
         clearVideo()
         activeUrl = ""
+        lastRect = null
         const surfaceEl = document.getElementById("videoSurface")
         if (surfaceEl) {
             surfaceEl.classList.remove("preview", "fullscreen")
             surfaceEl.classList.add("hidden")
+            surfaceEl.style.left = "0px"
+            surfaceEl.style.top = "0px"
+            surfaceEl.style.width = "0px"
+            surfaceEl.style.height = "0px"
         }
     }
 

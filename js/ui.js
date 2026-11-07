@@ -31,6 +31,7 @@ App.ui = (function () {
             const request = store.takeFocus()
             if (request) tv.set(request.zone, request.row, request.col)
             else tv.refresh()
+            if (App.player && App.player.setRect) App.player.setRect()
         })
 
         const state = store.state
