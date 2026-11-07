@@ -90,7 +90,9 @@ App.player = (function () {
                       : "contain"
         }
         if (!resizeBound) {
-            window.addEventListener("resize", resize)
+            window.addEventListener("resize", () => {
+                setRect()
+            })
             resizeBound = true
         }
     }
@@ -103,13 +105,24 @@ App.player = (function () {
 
     // AVPlay and HTML5 Surface layout management: Preview vs Fullscreen
     function setRect(rect) {
+        if (rect && typeof rect.stopPropagation === "function") {
+            rect = undefined
+        }
         if (rect !== undefined) lastRect = rect
         const surfaceEl = document.getElementById("videoSurface")
-        const isPreview = !!(lastRect && lastRect.w > 2 && lastRect.h > 2)
+        const isPlayerScreen = App.store && App.store.state && App.store.state.screen === "player"
+        const isPreview = !isPlayerScreen && !!(lastRect && lastRect.w > 2 && lastRect.h > 2)
+
         if (surfaceEl) {
-            surfaceEl.classList.remove("hidden")
-            if (isPreview) {
-                surfaceEl.classList.remove("fullscreen")
+            if (isPlayerScreen) {
+                surfaceEl.classList.remove("hidden", "preview")
+                surfaceEl.classList.add("fullscreen")
+                surfaceEl.style.left = "0px"
+                surfaceEl.style.top = "0px"
+                surfaceEl.style.width = "100vw"
+                surfaceEl.style.height = "100vh"
+            } else if (isPreview) {
+                surfaceEl.classList.remove("hidden", "fullscreen")
                 surfaceEl.classList.add("preview")
                 const stage = document.getElementById("previewStage")
                 const box = stage && stage.getBoundingClientRect ? stage.getBoundingClientRect() : null
@@ -125,17 +138,13 @@ App.player = (function () {
                     surfaceEl.style.height = `${Math.round(lastRect.h)}px`
                 }
             } else {
-                surfaceEl.classList.remove("preview")
-                surfaceEl.classList.add("fullscreen")
-                surfaceEl.style.left = "0px"
-                surfaceEl.style.top = "0px"
-                surfaceEl.style.width = "100vw"
-                surfaceEl.style.height = "100vh"
+                surfaceEl.classList.remove("fullscreen", "preview")
+                surfaceEl.classList.add("hidden")
             }
         }
         const AV = avplay()
         if (AV) {
-            const area = isPreview ? lastRect : { x: 0, y: 0, w: 1920, h: 1080 }
+            const area = isPreview ? lastRect : isPlayerScreen ? { x: 0, y: 0, w: 1920, h: 1080 } : { x: 0, y: 0, w: 0, h: 0 }
             try {
                 AV.setDisplayRect(
                     Math.round(area.x),
@@ -233,7 +242,13 @@ App.player = (function () {
                     stallCounter = 0
                     if (activeUrl && generation === playbackGeneration) {
                         const currentUrl = activeUrl
-                        const isVod = store && store.state && store.state.playing && store.isVod(store.state.playing.channel)
+                        const isVod =
+                            typeof App !== "undefined" &&
+                            App.store &&
+                            App.store.state &&
+                            App.store.state.playing &&
+                            App.store.isVod &&
+                            App.store.isVod(App.store.state.playing.channel)
                         const resume = isVod ? (video.currentTime || 0) : 0
                         play(currentUrl, lastRect, resume)
                     }
@@ -303,6 +318,7 @@ App.player = (function () {
                 video.load()
             } catch (e) {}
         }
+        killUpstream()
     }
 
     function clearVideo() {
@@ -315,18 +331,13 @@ App.player = (function () {
     }
 
     function killUpstream() {
-        if (typeof window !== "undefined" && window.location) {
-            const isLocal =
-                window.location.hostname === "localhost" ||
-                window.location.hostname === "127.0.0.1"
-            if (isLocal) {
-                try {
-                    fetch(`${window.location.origin}/kill-stream`, {
-                        method: "POST",
-                        keepalive: true,
-                    }).catch(() => {})
-                } catch {}
-            }
+        if (typeof window !== "undefined" && window.location && window.location.origin) {
+            try {
+                fetch(`${window.location.origin}/kill-stream`, {
+                    method: "POST",
+                    keepalive: true,
+                }).catch(() => {})
+            } catch {}
         }
     }
 
@@ -335,6 +346,7 @@ App.player = (function () {
         playbackStarted = false
         clearStart()
         clearStallWatchdog()
+        killUpstream()
         destroyTsPlayer()
         const AV = avplay()
         if (AV) {

@@ -183,7 +183,8 @@ App.api = (function () {
     // Xtream VOD catalogs can contain tens of thousands of entries. Parse the root
     // array as network chunks arrive so the UI can show the first films immediately.
     function fetchJsonBatches(url, onBatch, batchSize) {
-        return fetch(url).then((res) => {
+        const targetUrl = proxify(url)
+        return fetch(targetUrl).then((res) => {
             if (!res.ok) throw new Error(`HTTP ${res.status}`)
             const size = batchSize || 160
             const all = []
@@ -315,7 +316,8 @@ App.api = (function () {
 
     function loadM3uUrl(url, onProgress) {
         if (onProgress) onProgress({ label: "Connecting" })
-        return withTimeout(fetch(url), "The playlist is not responding").then((res) => {
+        const targetUrl = proxify(url)
+        return withTimeout(fetch(targetUrl), "The playlist is not responding").then((res) => {
             if (!res.ok) throw new Error(`HTTP ${res.status}`)
 
             const canStream = res.body && res.body.getReader && typeof TextDecoder !== "undefined"
@@ -634,9 +636,9 @@ App.api = (function () {
                 return list.map((item) => {
                     return {
                         title: decodeBase64(item.title) || item.title || "",
-                        description: decodeBase64(item.description) || "",
-                        start: decodeBase64(item.start) || "",
-                        end: decodeBase64(item.end) || "",
+                        description: decodeBase64(item.description) || item.description || "",
+                        start: decodeBase64(item.start) || item.start || "",
+                        end: decodeBase64(item.end) || item.end || "",
                     }
                 })
             })
@@ -666,11 +668,6 @@ App.api = (function () {
             Referer: `${originOf(endpoint)}/c/`,
         }
         if (token) headers.Authorization = `Bearer ${token}`
-        return withTimeout(
-            fetchJson(`${endpoint}?${query}`, headers),
-            "The Stalker portal is not responding",
-            timeoutMs,
-        )
 
         const runCall = () => {
             const now = Date.now()
@@ -766,7 +763,7 @@ App.api = (function () {
             })
         }
         if (list.url) {
-            return withTimeout(fetch(list.url, { method: "HEAD" }), "Le serveur ne répond pas", 10000).then(() => true)
+            return withTimeout(fetch(proxify(list.url), { method: "HEAD" }), "Le serveur ne répond pas", 10000).then(() => true)
         }
         return Promise.resolve(true)
     }

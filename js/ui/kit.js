@@ -471,7 +471,7 @@ App.uiKit = (function () {
                     source=${view.items}
                     showGroup=${view.showGroup}
                     detail=${props.detail}
-                    saved=${store.isFavorite(listOf(channel), channel.url)}
+                    saved=${store.isFavorite(listOf(channel), channel.url || channel)}
                 />`
             })}
             ${view.hasMore ? html`<button class="row channel load-more" tabindex="-1" onClick=${store.loadMore}>

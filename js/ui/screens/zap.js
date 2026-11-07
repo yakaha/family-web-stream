@@ -37,7 +37,7 @@ App.uiScreens = App.uiScreens || {}
                 ${channels.map((channel) => {
                     const program = store.programOf(channel)
                     const progress = store.programProgress(program)
-                    const saved = store.isFavorite(channel.listId, channel.url)
+                    const saved = store.isFavorite(channel.listId, channel.url || channel)
                     return html`<button
                         class=${`row zapch${store.isPlayingChannel(channel) ? " playing" : ""}`}
                         tabindex="-1"

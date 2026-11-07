@@ -154,7 +154,7 @@ App.uiScreens = App.uiScreens || {}
 
         const channel = state.playing ? state.playing.channel : null
         if (!channel) return null
-        const saved = store.isFavorite(state.playing.listId, channel.url)
+        const saved = store.isFavorite(state.playing.listId, channel.url || channel)
         const program = state.nowProgram
         const next = state.nextProgram
         const progress = store.programProgress(program)

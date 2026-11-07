@@ -1398,8 +1398,13 @@ App.store = (function () {
                     { id: "cat-4", name: "Thriller", count: 1 },
                 ],
             }
+            markMediaLoaded(demoId)
+            markMediaLoaded(demoId, "live")
+            markMediaLoaded(demoId, "movie")
+            invalidate()
             hideNotice()
             state.pinLoading = false
+            state.pinSubmitted = false
             openTv()
             notify("Connecté en Mode Démo · 4 chaînes et 2 films prêts")
             emit()
@@ -1701,8 +1706,22 @@ App.store = (function () {
             const todo = state.lists
                 .filter((l) => !(state.loadedMedia[l.id] || {}).live)
                 .map((l) => l.id)
+            const chooseCategory = () => {
+                if (state.screen !== "tv" || state.mediaType !== "live") return
+                const rows = tvCategories().rows
+                if (rows.length) {
+                    const target =
+                        !state.catName || !rows.some((r) => r.name === state.catName)
+                            ? rows[0].name
+                            : state.catName
+                    openTvCategory(target)
+                }
+                emit()
+            }
             if (todo.length) {
-                loadWithNotice(todo, todo.length === 1 ? listById(todo[0]).name : "your sources")
+                loadWithNotice(todo, todo.length === 1 ? listById(todo[0]).name : "your sources").then(chooseCategory)
+            } else {
+                chooseCategory()
             }
         }
     }
@@ -1795,7 +1814,14 @@ App.store = (function () {
         state.viewLimit = PAGE_SIZE
         set({ catName: name })
         focus("tvChannels", 0, 0)
-        ensureCategoryLoaded(name)
+        ensureCategoryLoaded(name).then(() => {
+            if (state.screen === "tv" && state.mediaType === "live" && !state.preview) {
+                const chans = visibleTvCategory().items
+                if (chans && chans.length > 0) {
+                    selectPreview(chans[0])
+                }
+            }
+        })
     }
 
     function selectPreview(channel) {
@@ -1922,22 +1948,41 @@ App.store = (function () {
         return true
     }
 
-    function favoriteIndex(listId, url) {
+    function channelKey(target) {
+        if (!target) return ""
+        if (typeof target === "object") {
+            return target.url || `${target.streamId || target.cmd || target.name || target.id || ""}`
+        }
+        return String(target)
+    }
+
+    function favoriteIndex(listId, channelOrUrl) {
+        const key = channelKey(channelOrUrl)
+        if (!key) return -1
         for (let i = 0; i < state.favorites.length; i++) {
             const favorite = state.favorites[i]
-            if (favorite.listId === listId && favorite.url === url) return i
+            if (favorite.listId === listId) {
+                if (channelKey(favorite) === key) return i
+                if (favorite.url && favorite.url === key) return i
+            }
         }
         return -1
     }
 
-    function isFavorite(listId, url) {
-        return favoriteIndex(listId, url) !== -1
+    function isFavorite(listId, channelOrUrl) {
+        return favoriteIndex(listId, channelOrUrl) !== -1
     }
 
     function asSaved(channel, listId) {
         return {
+            id: channel.id,
             listId,
-            url: channel.url,
+            url: channel.url || "",
+            cmd: channel.cmd || "",
+            streamId: channel.streamId || "",
+            mediaType: channel.mediaType || "live",
+            categoryId: channel.categoryId || "",
+            num: channel.num,
             name: channel.name,
             group: channel.group,
             logo: channel.logo,
@@ -1945,7 +1990,7 @@ App.store = (function () {
     }
 
     function toggleFavorite(channel, listId) {
-        const index = favoriteIndex(listId, channel.url)
+        const index = favoriteIndex(listId, channel)
         if (index === -1) {
             state.favorites = state.favorites.concat([asSaved(channel, listId)])
             write(KEYS.favorites, state.favorites)
@@ -1959,10 +2004,11 @@ App.store = (function () {
     }
 
     function pushRecent(channel, listId) {
+        const key = channelKey(channel)
         state.recent = [asSaved(channel, listId)]
             .concat(
                 state.recent.filter((item) => {
-                    return item.url !== channel.url
+                    return channelKey(item) !== key
                 }),
             )
             .slice(0, MAX_RECENT)

@@ -433,6 +433,7 @@ App.tv = (function () {
             },
             true,
         )
+
         try {
             if (typeof tizen !== "undefined" && tizen.tvinputdevice) {
                 const keys = [

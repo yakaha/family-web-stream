@@ -33,13 +33,14 @@
 
 .video-surface.preview {
     position: fixed !important;
-    left: var(--hole-x, 0) !important;
-    top: var(--hole-y, 0) !important;
-    width: var(--hole-w, 0) !important;
-    height: var(--hole-h, 0) !important;
+    left: var(--hole-x, 0);
+    top: var(--hole-y, 0);
+    width: var(--hole-w, 0);
+    height: var(--hole-h, 0);
     border-radius: 4px;
     pointer-events: none;
     display: block !important;
+    z-index: 2;
 }
 
 .video-surface #videoPlayer {

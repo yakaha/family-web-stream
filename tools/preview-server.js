@@ -41,22 +41,36 @@ const MIME = {
 const httpAgent = new http.Agent({ keepAlive: true, maxSockets: 100, keepAliveMsecs: 60000 })
 const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 100, keepAliveMsecs: 60000 })
 
-let currentLiveStreamReq = null
-let currentLiveStreamRes = null
+const clientLiveStreams = new Map()
 
-function killActiveLiveStream() {
-    if (currentLiveStreamReq) {
-        try {
-            console.log("[Proxy] Terminating previous upstream live stream request")
-            currentLiveStreamReq.destroy()
-        } catch (e) {}
-        currentLiveStreamReq = null
-    }
-    if (currentLiveStreamRes) {
-        try {
-            currentLiveStreamRes.destroy()
-        } catch (e) {}
-        currentLiveStreamRes = null
+function getClientKey(req) {
+    const remote = (req.socket && req.socket.remoteAddress) || "local"
+    const ua = req.headers["user-agent"] || ""
+    return `${remote}:${ua}`
+}
+
+function killActiveLiveStream(clientKey) {
+    if (clientKey) {
+        const stream = clientLiveStreams.get(clientKey)
+        if (stream) {
+            try {
+                if (stream.req) stream.req.destroy()
+            } catch (e) {}
+            try {
+                if (stream.res) stream.res.destroy()
+            } catch (e) {}
+            clientLiveStreams.delete(clientKey)
+        }
+    } else {
+        for (const stream of clientLiveStreams.values()) {
+            try {
+                if (stream.req) stream.req.destroy()
+            } catch (e) {}
+            try {
+                if (stream.res) stream.res.destroy()
+            } catch (e) {}
+        }
+        clientLiveStreams.clear()
     }
 }
 
@@ -83,8 +97,9 @@ function proxyRequest(req, res, targetUrl) {
                 /stream=/i.test(targetUrl) ||
                 /:\d{4,5}\//i.test(targetUrl)))
 
+    const clientKey = getClientKey(req)
     if (isLiveStream && !req._isRedirect) {
-        killActiveLiveStream()
+        killActiveLiveStream(clientKey)
     }
 
     // Disable socket timeouts and enable TCP NoDelay for continuous video streaming
@@ -138,7 +153,9 @@ function proxyRequest(req, res, targetUrl) {
     const proxyReq = client.request(options, (proxyRes) => {
         activeProxyRes = proxyRes
         if (isLiveStream) {
-            currentLiveStreamRes = proxyRes
+            const streamObj = clientLiveStreams.get(clientKey) || {}
+            streamObj.res = proxyRes
+            clientLiveStreams.set(clientKey, streamObj)
         }
 
         if (proxyRes.statusCode === 429 && (!req._retries || req._retries < 3)) {
@@ -186,7 +203,9 @@ function proxyRequest(req, res, targetUrl) {
     })
 
     if (isLiveStream) {
-        currentLiveStreamReq = proxyReq
+        const streamObj = clientLiveStreams.get(clientKey) || {}
+        streamObj.req = proxyReq
+        clientLiveStreams.set(clientKey, streamObj)
     }
 
     proxyReq.on("socket", (sock) => {
@@ -202,8 +221,12 @@ function proxyRequest(req, res, targetUrl) {
         try {
             if (activeProxyRes) activeProxyRes.destroy()
         } catch {}
-        if (currentLiveStreamReq === proxyReq) currentLiveStreamReq = null
-        if (currentLiveStreamRes === activeProxyRes) currentLiveStreamRes = null
+        if (isLiveStream) {
+            const current = clientLiveStreams.get(clientKey)
+            if (current && (current.req === proxyReq || current.res === activeProxyRes)) {
+                clientLiveStreams.delete(clientKey)
+            }
+        }
     })
 
     proxyReq.on("error", (err) => {
@@ -231,7 +254,8 @@ const server = http.createServer((req, res) => {
     }
 
     if (req.url === "/kill-stream" || req.url.startsWith("/kill-stream")) {
-        killActiveLiveStream()
+        const clientKey = getClientKey(req)
+        killActiveLiveStream(clientKey)
         res.writeHead(200, {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*",
@@ -255,7 +279,12 @@ const server = http.createServer((req, res) => {
     let reqPath = decodeURIComponent(req.url.split("?")[0])
     if (reqPath === "/" || reqPath === "") reqPath = "/index.html"
 
-    const filePath = path.join(ROOT, reqPath.replace(/^\/+/, ""))
+    const filePath = path.resolve(ROOT, reqPath.replace(/^\/+/, ""))
+    if (!filePath.startsWith(ROOT)) {
+        res.writeHead(403, { "Content-Type": "text/plain" })
+        res.end("403 Forbidden")
+        return
+    }
 
     fs.stat(filePath, (err, stats) => {
         if (err || !stats.isFile()) {
