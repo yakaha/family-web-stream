@@ -698,4 +698,10 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
     }
 
     document.addEventListener("DOMContentLoaded", start)
+
+    if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+            navigator.serviceWorker.register("./sw.js").catch(() => {})
+        })
+    }
 })()

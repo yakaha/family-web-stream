@@ -2385,6 +2385,9 @@ App.store = (function () {
     }
 
     function exitPlayer() {
+        if (typeof App !== "undefined" && App.exitFullscreen) {
+            App.exitFullscreen()
+        }
         if (zapDebounceTimer) {
             clearTimeout(zapDebounceTimer)
             zapDebounceTimer = null

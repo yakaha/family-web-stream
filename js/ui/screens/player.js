@@ -38,6 +38,33 @@ App.uiScreens = App.uiScreens || {}
         const subtitleChoiceState = useState(-1)
         const subtitleChoice = subtitleChoiceState[0]
         const setSubtitleChoice = subtitleChoiceState[1]
+        const isFsState = useState(App.isFullscreen ? App.isFullscreen() : false)
+        const isFullscreen = isFsState[0]
+        const setIsFullscreen = isFsState[1]
+
+        useEffect(() => {
+            function updateFs() {
+                setIsFullscreen(App.isFullscreen ? App.isFullscreen() : false)
+            }
+            document.addEventListener("fullscreenchange", updateFs)
+            document.addEventListener("webkitfullscreenchange", updateFs)
+            return function () {
+                document.removeEventListener("fullscreenchange", updateFs)
+                document.removeEventListener("webkitfullscreenchange", updateFs)
+            }
+        }, [])
+
+        function handleExit(e) {
+            if (e && e.stopPropagation) e.stopPropagation()
+            if (App.exitFullscreen) App.exitFullscreen()
+            store.exitPlayer()
+        }
+
+        function handleToggleFs(e) {
+            if (e && e.stopPropagation) e.stopPropagation()
+            if (App.toggleFullscreen) App.toggleFullscreen()
+            show()
+        }
 
         useEffect(() => {
             show()
@@ -179,7 +206,45 @@ App.uiScreens = App.uiScreens || {}
         return html`<section
             class=${`screen player${player.hardware() ? " hw" : ""}`}
             id="screen-player"
+            onClick=${function (e) {
+                if (e.target && !e.target.closest("button, input, .vod-controls, .ov-actions")) {
+                    show()
+                }
+            }}
         >
+            <div
+                class=${`player-top-bar${
+                    (overlay || state.menuFocus) && !state.playError && !state.zapOpen
+                        ? " visible"
+                        : ""
+                }`}
+                id="playerTopBar"
+            >
+                <button
+                    class="player-btn-back"
+                    id="playerBackBtn"
+                    title="Retour"
+                    tabindex="-1"
+                    onClick=${handleExit}
+                >
+                    <span class="icon-arrow">←</span>
+                    <span class="player-btn-label">Retour</span>
+                </button>
+                <div class="player-top-meta">
+                    <span class="player-channel-badge">${vod ? (channel.mediaType === "movie" ? "Film" : "Épisode") : "En direct"}</span>
+                    <span class="player-channel-title">${channel.name}</span>
+                </div>
+                <button
+                    class="player-btn-fs"
+                    id="playerFullscreenBtn"
+                    title=${isFullscreen ? "Quitter le plein écran" : "Plein écran"}
+                    tabindex="-1"
+                    onClick=${handleToggleFs}
+                >
+                    <span class="icon-fs">${isFullscreen ? "⤦" : "⛶"}</span>
+                    <span class="player-btn-label">${isFullscreen ? "Réduire" : "Plein écran"}</span>
+                </button>
+            </div>
             ${
                 state.playStatus === "opening"
                     ? html`<div class="player-status" id="playerStatus">
@@ -457,6 +522,18 @@ App.uiScreens = App.uiScreens || {}
                                               <strong>${state.aspectRatio === "fill" ? "Plein écran" : state.aspectRatio === "cover" ? "Zoom" : "Original"}</strong>
                                           </span>
                                       </button>
+                                       <button
+                                           class="btn vod-action vod-exit"
+                                           id="vodExitBtn"
+                                           tabindex="-1"
+                                           onClick=${handleExit}
+                                       >
+                                           <span class="vod-action-icon">✕</span>
+                                           <span class="vod-track-copy">
+                                               <small>QUITTER</small>
+                                               <strong>Retour</strong>
+                                           </span>
+                                       </button>
                                   </div>
                               </div>`
                             : html`<div class="ov-live-actions">
@@ -483,6 +560,15 @@ App.uiScreens = App.uiScreens || {}
                                       <span class="vod-action-icon">⛶</span>
                                       <span>${state.aspectRatio === "fill" ? "Format : Plein écran 16:9" : state.aspectRatio === "cover" ? "Format : Zoom" : "Format : Original"}</span>
                                   </button>
+                                   <button
+                                       class="btn vod-action ov-exit"
+                                       id="ovExitBtn"
+                                       tabindex="-1"
+                                       onClick=${handleExit}
+                                   >
+                                       <span class="vod-action-icon">✕</span>
+                                       <span>Quitter la lecture</span>
+                                   </button>
                               </div>`
                     }
                 </div>

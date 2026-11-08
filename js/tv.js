@@ -27,10 +27,55 @@ App.tv = (function () {
     }
 
     let hasRequestedFullscreen = false
+    function isFullscreen() {
+        return !!(
+            document.fullscreenElement ||
+            document.webkitFullscreenElement ||
+            document.mozFullScreenElement ||
+            document.msFullscreenElement
+        )
+    }
+
+    function exitFullscreen() {
+        try {
+            if (isFullscreen()) {
+                const exit =
+                    document.exitFullscreen ||
+                    document.webkitExitFullscreen ||
+                    document.mozCancelFullScreen ||
+                    document.msExitFullscreen
+                if (exit) return exit.call(document)
+            }
+        } catch {}
+    }
+
+    function toggleFullscreen() {
+        try {
+            if (isFullscreen()) {
+                return exitFullscreen()
+            } else {
+                const el = document.documentElement
+                const rfs =
+                    el.requestFullscreen ||
+                    el.webkitRequestFullscreen ||
+                    el.msRequestFullscreen ||
+                    el.mozRequestFullScreen
+                if (rfs) return rfs.call(el)
+            }
+        } catch {}
+    }
+
+    App.isFullscreen = isFullscreen
+    App.exitFullscreen = exitFullscreen
+    App.toggleFullscreen = toggleFullscreen
+
     function requestFullscreenOnce() {
         if (hasRequestedFullscreen) return
         hasRequestedFullscreen = true
         try {
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+            // On mobile devices, let the user trigger fullscreen via player or dedicated button instead of auto-hijacking the first touch
+            if (isMobile) return
             const el = document.documentElement
             const rfs =
                 el.requestFullscreen ||
@@ -482,5 +527,8 @@ App.tv = (function () {
         listen,
         focusedElement,
         syncGridWithElement,
+        isFullscreen,
+        exitFullscreen,
+        toggleFullscreen,
     }
 })()

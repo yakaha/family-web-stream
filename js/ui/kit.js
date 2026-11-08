@@ -336,6 +336,21 @@ App.uiKit = (function () {
         const clock = useClock()
         const stats = store.stats()
         const sources = store.state.lists.slice(0, 3)
+        const isFsState = useState(App.isFullscreen ? App.isFullscreen() : false)
+        const isFullscreen = isFsState[0]
+        const setIsFullscreen = isFsState[1]
+
+        useEffect(() => {
+            function updateFs() {
+                setIsFullscreen(App.isFullscreen ? App.isFullscreen() : false)
+            }
+            document.addEventListener("fullscreenchange", updateFs)
+            document.addEventListener("webkitfullscreenchange", updateFs)
+            return function () {
+                document.removeEventListener("fullscreenchange", updateFs)
+                document.removeEventListener("webkitfullscreenchange", updateFs)
+            }
+        }, [])
 
         useEffect(() => {
             const rail = nav.current
@@ -409,6 +424,18 @@ App.uiKit = (function () {
                     : null
             }
             <div class="rail-foot">
+                <button
+                    class="rail-fs-btn"
+                    id="railFsBtn"
+                    title=${isFullscreen ? "Quitter le plein écran" : "Plein écran"}
+                    tabindex="-1"
+                    onClick=${function () {
+                        if (App.toggleFullscreen) App.toggleFullscreen()
+                    }}
+                >
+                    <span class="rail-fs-icon">${isFullscreen ? "⤦" : "⛶"}</span>
+                    <span class="rail-fs-label">${isFullscreen ? "Réduire" : "Plein écran"}</span>
+                </button>
                 <p class="rail-clock" id="railClock">${clock}</p>
                 <p class="rail-counts" id="railCounts">${stats.counts}</p>
             </div>
