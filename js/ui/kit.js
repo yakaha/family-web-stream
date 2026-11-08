@@ -425,6 +425,18 @@ App.uiKit = (function () {
             }
             <div class="rail-foot">
                 <button
+                    class="rail-fs-btn rail-install-btn"
+                    id="railInstallBtn"
+                    title="Installer l'application"
+                    tabindex="-1"
+                    onClick=${function () {
+                        if (App.installPwa) App.installPwa()
+                    }}
+                >
+                    <span class="rail-fs-icon">📲</span>
+                    <span class="rail-fs-label">Installer l'app</span>
+                </button>
+                <button
                     class="rail-fs-btn"
                     id="railFsBtn"
                     title=${isFullscreen ? "Quitter le plein écran" : "Plein écran"}
@@ -447,8 +459,18 @@ App.uiKit = (function () {
         const listId = props.listId || channel.listId
         const now = programText(store.programOf(channel))
         function open() {
-            if (props.detail) store.selectPreview(channel)
-            else store.play(channel, listId, props.source)
+            const isMobile = typeof window !== "undefined" && (window.innerWidth <= 768 || (window.matchMedia && window.matchMedia("(max-width: 768px)").matches))
+            if (isMobile) {
+                if (channel.mediaType === "series") {
+                    store.openSeries(channel)
+                } else {
+                    store.play(channel, listId, props.source)
+                }
+            } else if (props.detail) {
+                store.selectPreview(channel)
+            } else {
+                store.play(channel, listId, props.source)
+            }
         }
         return html`<button
             class="row channel"

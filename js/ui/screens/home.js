@@ -31,6 +31,16 @@ App.uiScreens = App.uiScreens || {}
                         Add source
                     </button>
                     <button class="btn" id="serverSelectBtn" tabindex="-1" onClick=${store.openServers}>Changer de serveur</button>
+                    <button
+                        class="btn primary"
+                        id="installAppBtn"
+                        tabindex="-1"
+                        onClick=${function () {
+                            if (App.installPwa) App.installPwa()
+                        }}
+                    >
+                        📲 Installer l'application
+                    </button>
                 </div>`}
             />
             <div class="columns">

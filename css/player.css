@@ -941,4 +941,24 @@ body.playing {
     .player-top-meta {
         display: none;
     }
+
+    .zap {
+        width: 100% !important;
+        min-width: 0 !important;
+        inset: 0 !important;
+        grid-template-columns: minmax(100px, 32%) 1fr !important;
+    }
+
+    .ov-live-actions {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        gap: 8px;
+    }
+
+    .ov-live-actions .btn {
+        width: 100%;
+        min-height: 44px;
+        font-size: 14px;
+    }
 }

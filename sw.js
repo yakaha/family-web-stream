@@ -1,51 +1,55 @@
-const CACHE_NAME = "fws-shell-v1"
+const CACHE_NAME = "fws-shell-v2"
 
 const STATIC_ASSETS = [
-    "/",
-    "/index.html",
-    "/manifest.json",
-    "/icon.png",
-    "/icon-192.png",
-    "/brand.png",
-    "/css/tokens.css",
-    "/css/base.css",
-    "/css/lists.css",
-    "/css/forms.css",
-    "/css/player.css",
-    "/css/overlays.css",
-    "/css/media.css",
-    "/css/access.css",
-    "/vendor/preact.umd.js",
-    "/vendor/hooks.umd.js",
-    "/vendor/htm.umd.js",
-    "/vendor/mpegts.js",
-    "/js/api.js",
-    "/js/firebase.js",
-    "/js/player.js",
-    "/js/tv.js",
-    "/js/store.js",
-    "/js/ui/kit.js",
-    "/js/ui/screens/home.js",
-    "/js/ui/screens/access.js",
-    "/js/ui/screens/series.js",
-    "/js/ui/screens/tv.js",
-    "/js/ui/screens/recents.js",
-    "/js/ui/screens/favs.js",
-    "/js/ui/screens/cats.js",
-    "/js/ui/screens/add.js",
-    "/js/ui/screens/player.js",
-    "/js/ui/screens/zap.js",
-    "/js/ui/screens/overlays.js",
-    "/js/ui.js",
-    "/js/app.js"
+    "./",
+    "./index.html",
+    "./manifest.json",
+    "./icon.png",
+    "./icon-192.png",
+    "./brand.png",
+    "./css/tokens.css",
+    "./css/base.css",
+    "./css/lists.css",
+    "./css/forms.css",
+    "./css/player.css",
+    "./css/overlays.css",
+    "./css/media.css",
+    "./css/access.css",
+    "./vendor/preact.umd.js",
+    "./vendor/hooks.umd.js",
+    "./vendor/htm.umd.js",
+    "./vendor/mpegts.js",
+    "./js/api.js",
+    "./js/firebase.js",
+    "./js/player.js",
+    "./js/tv.js",
+    "./js/store.js",
+    "./js/ui/kit.js",
+    "./js/ui/screens/home.js",
+    "./js/ui/screens/access.js",
+    "./js/ui/screens/series.js",
+    "./js/ui/screens/tv.js",
+    "./js/ui/screens/recents.js",
+    "./js/ui/screens/favs.js",
+    "./js/ui/screens/cats.js",
+    "./js/ui/screens/add.js",
+    "./js/ui/screens/player.js",
+    "./js/ui/screens/zap.js",
+    "./js/ui/screens/overlays.js",
+    "./js/ui.js",
+    "./js/app.js"
 ]
 
 self.addEventListener("install", (event) => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(STATIC_ASSETS).catch((err) => {
-                console.warn("[SW] Cache preload partial warning:", err)
-            })
+        caches.open(CACHE_NAME).then(async (cache) => {
+            for (const asset of STATIC_ASSETS) {
+                try {
+                    await cache.add(asset)
+                } catch (e) {
+                    // Non-critical if individual asset fails
+                }
+            }
         }).then(() => self.skipWaiting())
     )
 })
@@ -92,7 +96,6 @@ self.addEventListener("fetch", (event) => {
         return
     }
 
-    // Network-First with Cache Fallback for app shell
     event.respondWith(
         fetch(req)
             .then((networkRes) => {
@@ -106,7 +109,7 @@ self.addEventListener("fetch", (event) => {
                 return caches.match(req).then((cachedRes) => {
                     if (cachedRes) return cachedRes
                     if (req.mode === "navigate") {
-                        return caches.match("/index.html")
+                        return caches.match("./index.html") || caches.match("./")
                     }
                 })
             })

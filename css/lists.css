@@ -716,3 +716,194 @@ body.previewing .preview-stage > .av-surface {
     box-shadow: 0 0 0 4px #fff, 0 0 20px rgba(21, 233, 164, 0.6);
     outline: none;
 }
+
+/* Responsive & Mobile Lists Layout */
+@media (max-width: 768px) {
+    /* TV Browser: 2-column split (Categories on left, Channels on right) */
+    .browse {
+        display: grid;
+        grid-template-columns: minmax(110px, 34%) 1fr;
+        grid-template-rows: minmax(0, 1fr);
+        gap: 8px;
+        height: 100%;
+        min-height: 0;
+    }
+
+    .browse-cats {
+        border-right: 1px solid var(--line);
+        padding-right: 4px;
+    }
+
+    .browse-cats .row.tvcat {
+        min-height: 48px;
+        padding: 8px 8px;
+        gap: 6px;
+    }
+
+    .browse-cats .row.tvcat .row-name {
+        font-size: 13px;
+        line-height: 1.2;
+    }
+
+    .browse-cats .row.tvcat .row-count {
+        font-size: 11px;
+        min-width: 3ch;
+    }
+
+    .browse-channels {
+        min-width: 0;
+    }
+
+    .browse-preview {
+        display: none !important;
+    }
+
+    /* General Rows on mobile */
+    .row {
+        min-height: 54px;
+        padding: 8px 10px;
+        gap: 10px;
+    }
+
+    .row .num {
+        font-size: 12px;
+        min-width: 20px;
+    }
+
+    .row .thumb {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        flex-shrink: 0;
+    }
+
+    .row-name {
+        font-size: 14px;
+        line-height: 1.25;
+    }
+
+    .row-sub {
+        font-size: 12px;
+    }
+
+    .row-now {
+        display: none;
+    }
+
+    .row-count {
+        font-size: 13px;
+        min-width: 4ch;
+    }
+
+    /* Columns for Categories Screen & Home Screen */
+    .columns {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .col-groups {
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        gap: 6px;
+        padding-bottom: 6px;
+        flex-shrink: 0;
+        scrollbar-width: none;
+    }
+
+    .col-groups::-webkit-scrollbar {
+        display: none;
+    }
+
+    .col-groups .row.group {
+        flex-shrink: 0;
+        width: auto;
+        min-height: 38px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: var(--surface-2);
+        border: 1px solid var(--line-2);
+    }
+
+    .col-groups .row.group.selected {
+        background: var(--surface-3);
+        border-color: var(--ring);
+    }
+
+    .row.group .row-name {
+        font-size: 13px;
+    }
+
+    .row.group .row-count {
+        font-size: 11px;
+    }
+
+    /* Series Seasons & Episodes on mobile */
+    .series-container {
+        flex-direction: column;
+        padding: 0 0 10px;
+        gap: 10px;
+    }
+
+    .series-seasons-col {
+        width: 100%;
+        max-height: 60px;
+        flex-shrink: 0;
+        border-radius: var(--r-md);
+    }
+
+    .series-seasons-header {
+        display: none;
+    }
+
+    .series-seasons-list {
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .series-seasons-list::-webkit-scrollbar {
+        display: none;
+    }
+
+    .season-btn {
+        flex-shrink: 0;
+        min-width: 90px;
+        min-height: 44px;
+        padding: 6px 12px;
+        border-bottom: 0;
+        border-right: 1px solid var(--line);
+    }
+
+    .season-badge {
+        width: 34px;
+        height: 26px;
+        font-size: 12px;
+    }
+
+    .series-episodes-col {
+        width: 100%;
+        border-radius: var(--r-md);
+    }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+    .browse {
+        grid-template-columns: 220px 1fr;
+        gap: 14px;
+    }
+
+    .browse-preview {
+        display: none;
+    }
+
+    .columns {
+        grid-template-columns: 200px 1fr;
+        gap: 16px;
+    }
+}

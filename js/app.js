@@ -699,6 +699,47 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
 
     document.addEventListener("DOMContentLoaded", start)
 
+    let deferredPrompt = null
+    window.addEventListener("beforeinstallprompt", (e) => {
+        e.preventDefault()
+        deferredPrompt = e
+        if (store && store.setCanInstallPwa) {
+            store.setCanInstallPwa(true)
+        }
+    })
+
+    window.addEventListener("appinstalled", () => {
+        deferredPrompt = null
+        if (store && store.setCanInstallPwa) {
+            store.setCanInstallPwa(false)
+        }
+        if (store && store.notify) {
+            store.notify("Application installée avec succès ! 🎉", 4000)
+        }
+    })
+
+    App.installPwa = function () {
+        if (deferredPrompt) {
+            deferredPrompt.prompt()
+            deferredPrompt.userChoice.then((choice) => {
+                if (choice.outcome === "accepted" && store && store.setCanInstallPwa) {
+                    store.setCanInstallPwa(false)
+                }
+                deferredPrompt = null
+            })
+        } else {
+            const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream
+            const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true
+            if (isStandalone) {
+                if (store && store.notify) store.notify("L'application est déjà installée sur cet appareil !")
+            } else if (isIos) {
+                if (store && store.notify) store.notify("📲 Pour installer sur iPhone : appuyez sur le bouton Partager ⎋ dans Safari puis 'Sur l'écran d'accueil' ➕", 8000)
+            } else {
+                if (store && store.notify) store.notify("📲 Pour installer : ouvrez le menu du navigateur (⋮) puis cliquez sur 'Installer l'application' ou 'Ajouter à l'écran d'accueil'", 8000)
+            }
+        }
+    }
+
     if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
             navigator.serviceWorker.register("./sw.js").catch(() => {})

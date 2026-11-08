@@ -319,3 +319,58 @@ body.previewing {
     background-color: transparent;
     background-image: none;
 }
+
+/* Responsive & Mobile Overlays */
+@media (max-width: 768px) {
+    .modal-card {
+        width: min(420px, 92vw);
+        padding: 22px 18px 18px;
+        font-size: 16px;
+        border-radius: var(--r-lg);
+    }
+
+    .modal-card .play-why {
+        font-size: 13px;
+    }
+
+    .modal-card .play-name {
+        font-size: 22px;
+        margin-top: 8px;
+    }
+
+    .modal-card .play-hint {
+        font-size: 14px;
+        margin-top: 8px;
+    }
+
+    .play-actions,
+    .modal-actions {
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 18px;
+    }
+
+    .play-actions .btn,
+    .modal-actions .btn {
+        width: 100%;
+        min-height: 44px;
+        font-size: 14px;
+    }
+
+    .toast {
+        bottom: 74px; /* above the mobile bottom navigation bar */
+        max-width: 90vw;
+        padding: 10px 18px;
+        font-size: 13px;
+        white-space: normal;
+        text-align: center;
+        border-radius: var(--r-md);
+    }
+
+    .loading-browse {
+        inset: auto 12px 70px auto;
+        width: min(340px, calc(100vw - 24px));
+        padding: 12px 16px;
+        border-radius: var(--r-lg);
+    }
+}

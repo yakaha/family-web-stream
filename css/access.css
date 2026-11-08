@@ -442,3 +442,137 @@
         margin-top: 26px;
     }
 }
+
+@media (max-width: 768px) {
+    .access-screen {
+        padding: 12px;
+        align-items: center;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .access-card {
+        position: relative;
+        top: auto;
+        left: auto;
+        transform: none;
+        width: 100%;
+        max-width: 440px;
+        margin: auto;
+        grid-template-columns: 1fr;
+        gap: 16px;
+        padding: 22px 18px 20px;
+        border-radius: 24px;
+        max-height: none;
+        box-shadow: 0 16px 50px rgba(0, 0, 0, 0.7);
+    }
+
+    .access-intro {
+        text-align: center;
+    }
+
+    .access-brand {
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .access-mark {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        font-size: 20px;
+    }
+
+    .access-brand div {
+        font-size: 14px;
+        letter-spacing: 0.15em;
+    }
+
+    .access-kicker {
+        margin: 12px 0 4px;
+        font-size: 11px;
+    }
+
+    .access-intro h1 {
+        font-size: 24px;
+        max-width: 100%;
+        line-height: 1.2;
+    }
+
+    .access-copy,
+    .access-secure,
+    .access-foot {
+        display: none !important;
+    }
+
+    .access-pin-panel {
+        width: 100%;
+    }
+
+    .access-label {
+        font-size: 12px;
+        margin-bottom: 12px;
+    }
+
+    .pin-display {
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+
+    .pin-slot {
+        width: 48px;
+        height: 52px;
+        border-radius: 12px;
+        font-size: 24px;
+    }
+
+    .pin-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        width: 100%;
+        max-width: 320px;
+        margin: 0 auto;
+    }
+
+    .pin-key {
+        height: 48px;
+        min-height: 48px;
+        font-size: 20px;
+        border-radius: 12px;
+    }
+
+    .pin-actions {
+        width: 100%;
+        max-width: 320px;
+        margin: 12px auto 0;
+        gap: 8px;
+    }
+
+    .pin-actions .btn {
+        min-height: 44px;
+        padding: 8px 12px;
+        font-size: 14px;
+    }
+
+    /* Server cards on mobile */
+    .server-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .server-card {
+        min-height: 72px;
+        padding: 12px 14px;
+        border-radius: var(--r-md);
+        gap: 12px;
+    }
+
+    .server-card-copy strong {
+        font-size: 15px;
+    }
+
+    .server-card-copy small {
+        font-size: 11px;
+    }
+}

@@ -25,6 +25,7 @@ App.store = (function () {
     ]
 
     const state = {
+        canInstallPwa: false,
         screen: "pin",
         mediaType: "live",
         lists: [],
@@ -2759,8 +2760,14 @@ App.store = (function () {
         return App.player ? App.player.selectTrack(type, index) : false
     }
 
+    function setCanInstallPwa(val) {
+        state.canInstallPwa = !!val
+        emit()
+    }
+
     return {
         state,
+        setCanInstallPwa,
         subscribe,
         init,
         takeFocus,
