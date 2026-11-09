@@ -36,10 +36,9 @@ App.ui = (function () {
 
         const state = store.state
         const playing = state.screen === "player"
-        return html`<div class=${`app${playing ? " playing" : ""}`}>
+        return html`<div class=${`app fs-android-app${playing ? " playing" : ""}`}>
             <div class="backdrop" id="backdrop" aria-hidden="true"></div>
-            ${state.screen === "pin" ? null : html`<${Rail} screen=${state.screen} />`}
-            <main class="main">
+            <main class="main fs-full-main">
                 ${state.screen === "pin" ? html`<${Pin} />` : null}
                 ${state.screen === "servers" ? html`<${Servers} />` : null}
                 ${state.screen === "episodes" ? html`<${Series} />` : null}

@@ -79,6 +79,14 @@ App.store = (function () {
         currentSeries: null,
         seriesEpisodes: [],
         playbackInfo: null,
+        vodSort: "default",
+        selectedMovie: null,
+        globalSearchOpen: false,
+        globalSearchQuery: "",
+        dnsPref: "1.1.1.1 (Cloudflare)",
+        vpnEnabled: true,
+        parentalLocked: true,
+        statsVisible: false,
     }
 
     const PROGRESS_MS = 250
@@ -164,7 +172,7 @@ App.store = (function () {
         if (screen === "episodes") return "seriesSeasons"
         if (screen === "recents") return "recentsList"
         if (screen === "favs") return "favsList"
-        if (screen === "home") return "sources"
+        if (screen === "home") return "homeCards"
         return null
     }
 
@@ -460,8 +468,9 @@ App.store = (function () {
     function chooseDefaultCategory(mediaType) {
         if (state.screen !== "tv" || state.mediaType !== mediaType || state.categoryManual) return
         const rows = tvCategories().rows
-        if (rows.length && state.catName !== rows[0].name) {
-            state.catName = rows[0].name
+        const regular = rows.find((r) => !r.special) || rows[0]
+        if (regular && state.catName !== regular.name) {
+            state.catName = regular.name
             focus("tvChannels")
         }
     }
@@ -846,6 +855,9 @@ App.store = (function () {
     }
 
     function ensureCategoryLoaded(categoryName) {
+        if (categoryName === "⭐ Favoris" || categoryName === "🕒 Récents") {
+            return Promise.resolve([])
+        }
         const list = state.tvSource ? listById(state.tvSource) : state.lists[0]
         if (!list) return Promise.resolve([])
         const listCats = state.categories[list.id] && state.categories[list.id][state.mediaType]
@@ -1363,8 +1375,9 @@ App.store = (function () {
     }
 
     function goHome() {
-        set({ screen: "home" })
-        focus("sources")
+        if (App.player) App.player.stop()
+        set({ screen: "home", selectedMovie: null, globalSearchOpen: false })
+        focus("homeCards", 0, 0)
     }
 
     function authenticatePin(pin, action) {
@@ -1389,21 +1402,25 @@ App.store = (function () {
                 { id: "demo-2", num: 2, name: "France 2 HD", group: "Généraliste", logo: "", mediaType: "live", url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4" },
                 { id: "demo-3", num: 3, name: "beIN Sports 1 HD", group: "Sport", logo: "", mediaType: "live", url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4" },
                 { id: "demo-4", num: 4, name: "Canal+ Sport", group: "Sport", logo: "", mediaType: "live", url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4" },
-                { id: "demo-5", num: 5, name: "Interstellar (4K)", group: "Science-Fiction", logo: "", mediaType: "movie", url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" },
-                { id: "demo-6", num: 6, name: "Inception (HD)", group: "Thriller", logo: "", mediaType: "movie", url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4" },
+                { id: "demo-5", num: 5, name: "Interstellar (4K)", group: "Science-Fiction", logo: "", mediaType: "movie", year: "2014", rating: "8.7", plot: "Une équipe d'explorateurs voyage à travers un trou de ver dans l'espace pour assurer la survie de l'humanité.", url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" },
+                { id: "demo-6", num: 6, name: "Inception (HD)", group: "Thriller", logo: "", mediaType: "movie", year: "2010", rating: "8.8", plot: "Un voleur qui s'approprie des secrets d'entreprise grâce à une technologie de partage de rêves se voit confier la tâche inverse.", url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4" },
+                { id: "demo-7", num: 7, name: "Cosmos : L'Odyssée", group: "Documentaire", logo: "", mediaType: "series", year: "2024", rating: "9.1", plot: "Exploration fascinante des mystères de l'univers et de l'espace-temps à travers plusieurs saisons.", url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4" },
             ]
             const demoSource = {
                 id: demoId,
-                name: "Mode Démo (Family Web)",
+                name: "Mode Démo (Family Stream)",
                 type: "m3u",
                 demo: true,
                 liveCount: 4,
                 movieCount: 2,
-                seriesCount: 0,
+                seriesCount: 1,
             }
+            state.firebaseUser = { id: "demo", name: "Mode Démo VIP", status: "active" }
+            state.firebaseServers = [{ id: "srv-demo", name: "Serveur Démo Premium", url: "demo://local", mac: "00:1A:79:00:00:00" }]
+            state.activeServerId = "srv-demo"
             state.lists = [demoSource]
             state.channels[demoId] = demoChannels
-            state.groups[demoId] = ["Généraliste", "Sport", "Science-Fiction", "Thriller"]
+            state.groups[demoId] = ["Généraliste", "Sport", "Science-Fiction", "Thriller", "Documentaire"]
             state.categories[demoId] = {
                 live: [
                     { id: "cat-1", name: "Généraliste", count: 2 },
@@ -1413,16 +1430,20 @@ App.store = (function () {
                     { id: "cat-3", name: "Science-Fiction", count: 1 },
                     { id: "cat-4", name: "Thriller", count: 1 },
                 ],
+                series: [
+                    { id: "cat-5", name: "Documentaire", count: 1 },
+                ],
             }
             markMediaLoaded(demoId)
             markMediaLoaded(demoId, "live")
             markMediaLoaded(demoId, "movie")
+            markMediaLoaded(demoId, "series")
             invalidate()
             hideNotice()
             state.pinLoading = false
             state.pinSubmitted = false
-            openTv()
-            notify("Connecté en Mode Démo · 4 chaînes et 2 films prêts")
+            goHome()
+            notify("Connecté en Mode Démo · TV, Films & Séries prêts")
             emit()
             return Promise.resolve()
         }
@@ -1437,7 +1458,7 @@ App.store = (function () {
                     state.pinLoading = false
                     set({ screen: "servers" })
                     focus("servers")
-                    return null
+                    return { serversOnly: true }
                 }
                 const sourceFields = {
                     origin: session.selected.url,
@@ -1462,7 +1483,8 @@ App.store = (function () {
                 hideNotice()
                 state.pinLoading = false
                 state.pinSubmitted = false
-                openTv()
+                if (result && result.serversOnly) return result
+                goHome()
                 const managed = state.lists.find((list) => list.firebaseManaged)
                 const catCount =
                     managed && state.categories[managed.id] && state.categories[managed.id].live
@@ -1615,7 +1637,7 @@ App.store = (function () {
                         state.mediaType = "live"
                         state.catName = firstCat
                         state.tvSource = draft.id
-                        state.screen = "tv"
+                        state.screen = "home"
                         hideNotice()
                         notify(`Serveur actif : ${server.name}`)
                         emit()
@@ -1623,7 +1645,7 @@ App.store = (function () {
                         if (firstCat) {
                             ensureCategoryLoaded(firstCat)
                         }
-                        focus("tvChannels", 0, 0)
+                        focus("homeCards", 0, 0)
                         preloadCatalog(draft.id)
                         return categories
                     })
@@ -1636,10 +1658,10 @@ App.store = (function () {
     }
 
     function openSeries(channel) {
-        const list = listById(channel.listId)
+        const list = listById(channel.listId) || state.lists[0]
         if (!list) return
         state.viewLimit = PAGE_SIZE
-        set({ screen: "episodes", currentSeries: channel, seriesEpisodes: [] })
+        set({ screen: "episodes", currentSeries: channel, seriesEpisodes: [], selectedMovie: null, globalSearchOpen: false })
         showNotice("Chargement de la série", channel.name)
         emit()
         App.api
@@ -1663,10 +1685,21 @@ App.store = (function () {
         focus("tvChannels")
     }
 
+    function openMovieDetail(channel) {
+        if (!channel) return
+        set({ selectedMovie: channel })
+        focus("movieDetail", 0, 0)
+    }
+
+    function closeMovieDetail() {
+        set({ selectedMovie: null })
+        focus("tvChannels")
+    }
+
     function playSeriesEpisode(episode) {
         const series = state.currentSeries
         if (!series) return
-        const list = listById(series.listId)
+        const list = listById(series.listId) || state.lists[0]
         if (!list) return
         const playEpisode = (url) => {
             const channel = Object.assign({}, series, episode, {
@@ -1676,7 +1709,7 @@ App.store = (function () {
                 mediaType: "series-episode",
                 resumeId: `${series.seriesId || series.streamId || series.name}:${episode.season || 1}:${episode.number || episode.episodeNum || episode.title}`,
             })
-            play(channel, series.listId, [channel])
+            play(channel, series.listId || list.id, [channel])
         }
         if (episode.url) return playEpisode(episode.url)
         showNotice("Ouverture de l’épisode", episode.title)
@@ -1699,6 +1732,7 @@ App.store = (function () {
             screen: "tv",
             tvSource: null,
             preview: null,
+            selectedMovie: null,
             mediaType: "live",
             categoryManual: false,
         })
@@ -1709,10 +1743,12 @@ App.store = (function () {
             if (isRemote) {
                 ensureCategories(list.id, "live").then(() => {
                     const rows = tvCategories().rows
-                    if (rows.length) {
+                    const regularRows = rows.filter((r) => !r.special)
+                    const fallback = (regularRows[0] && regularRows[0].name) || (rows[0] && rows[0].name) || ""
+                    if (fallback) {
                         const target =
                             !state.catName || !rows.some((r) => r.name === state.catName)
-                                ? rows[0].name
+                                ? fallback
                                 : state.catName
                         openTvCategory(target)
                     }
@@ -1725,10 +1761,12 @@ App.store = (function () {
             const chooseCategory = () => {
                 if (state.screen !== "tv" || state.mediaType !== "live") return
                 const rows = tvCategories().rows
-                if (rows.length) {
+                const regularRows = rows.filter((r) => !r.special)
+                const fallback = (regularRows[0] && regularRows[0].name) || (rows[0] && rows[0].name) || ""
+                if (fallback) {
                     const target =
                         !state.catName || !rows.some((r) => r.name === state.catName)
-                            ? rows[0].name
+                            ? fallback
                             : state.catName
                     openTvCategory(target)
                 }
@@ -1748,6 +1786,7 @@ App.store = (function () {
             screen: "tv",
             tvSource: null,
             preview: null,
+            selectedMovie: null,
             mediaType: type,
             catName: "",
             categoryManual: false,
@@ -1759,8 +1798,10 @@ App.store = (function () {
             if (isRemote) {
                 ensureCategories(list.id, type).then(() => {
                     const rows = tvCategories().rows
-                    if (rows.length) {
-                        openTvCategory(rows[0].name)
+                    const regularRows = rows.filter((r) => !r.special)
+                    const fallback = (regularRows[0] && regularRows[0].name) || (rows[0] && rows[0].name) || ""
+                    if (fallback) {
+                        openTvCategory(fallback)
                     }
                 })
                 return
@@ -1771,11 +1812,13 @@ App.store = (function () {
             const chooseCategory = () => {
                 if (state.screen !== "tv" || state.mediaType !== type) return
                 const rows = tvCategories().rows
+                const regularRows = rows.filter((r) => !r.special)
+                const fallback = (regularRows[0] && regularRows[0].name) || (rows[0] && rows[0].name) || ""
                 const selected = rows.findIndex((row) => row.name === state.catName)
-                if (selected === -1) state.catName = rows[0] ? rows[0].name : ""
+                if (selected === -1) state.catName = fallback
                 focus(
                     rows.length ? "tvChannels" : "tvCats",
-                    Math.max(0, selected === -1 ? 0 : selected),
+                    0,
                     0,
                 )
                 emit()
@@ -1783,7 +1826,7 @@ App.store = (function () {
             if (todo.length) {
                 loadWithNotice(
                     todo,
-                    type === "movie" ? "Movies" : "Series",
+                    type === "movie" ? "Films" : "Séries",
                     type,
                 ).then(chooseCategory)
             } else chooseCategory()
@@ -1797,6 +1840,7 @@ App.store = (function () {
             screen: "tv",
             tvSource: listId,
             preview: null,
+            selectedMovie: null,
             mediaType: "live",
             categoryManual: false,
         })
@@ -1815,7 +1859,7 @@ App.store = (function () {
                 break
             }
         }
-        set({ screen: "tv" })
+        set({ screen: "tv", selectedMovie: null })
         const items = visibleTvCategory().items
         let channelRow = 0
         if (items && items.length && state.preview) {
@@ -1828,7 +1872,7 @@ App.store = (function () {
     function openTvCategory(name) {
         state.categoryManual = true
         state.viewLimit = PAGE_SIZE
-        set({ catName: name })
+        set({ catName: name, selectedMovie: null })
         focus("tvChannels", 0, 0)
         ensureCategoryLoaded(name).then(() => {
             if (state.screen === "tv" && state.mediaType === "live" && !state.preview) {
@@ -1842,15 +1886,17 @@ App.store = (function () {
 
     function selectPreview(channel) {
         if (!channel) return
+        if (channel.mediaType === "series") {
+            set({ preview: channel, previewRequested: false })
+            openSeries(channel)
+            return
+        }
+        if (channel.mediaType === "movie") {
+            set({ preview: channel, previewRequested: false })
+            openMovieDetail(channel)
+            return
+        }
         if (state.preview && sameChannel(state.preview, channel)) {
-            if (channel.mediaType === "series") {
-                openSeries(channel)
-                return
-            }
-            if (channel.mediaType === "movie") {
-                play(channel, channel.listId, visibleTvCategory().items)
-                return
-            }
             if (state.preview.url) {
                 play(state.preview, channel.listId, visibleTvCategory().items)
                 return
@@ -1859,11 +1905,8 @@ App.store = (function () {
             return
         }
         set({ preview: channel, previewRequested: false })
-        if (channel.mediaType === "movie" || channel.mediaType === "series") {
-            return
-        }
         if (channel.url) return
-        const list = listById(channel.listId)
+        const list = listById(channel.listId) || state.lists[0]
         if (!list || listKind(list) !== "stalker" || !channel.cmd) return
         const selected = channel
         App.api
@@ -2501,10 +2544,22 @@ App.store = (function () {
         }
     }
 
+    function isAdultCategoryName(name) {
+        if (!name) return false
+        return /\b(adult|adults|xxx|18\+|porn|erotic|x-rated|for adults)\b/i.test(String(name))
+    }
+
     function tvCategories() {
         const scope = state.tvSource
         const activeList = (scope ? listById(scope) : null) || state.lists[0]
         const mediaType = state.mediaType || "live"
+        const favCount = state.favorites.filter((c) => matchesMedia(c, mediaType)).length
+        const recCount = state.recent.filter((c) => matchesMedia(c, mediaType)).length
+        const specialRows = [
+            { name: "⭐ Favoris", id: "__favs__", special: "favs", count: favCount, sources: 1 },
+            { name: "🕒 Récents", id: "__recents__", special: "recents", count: recCount, sources: 1 },
+        ]
+
         const catList =
             activeList &&
             state.categories[activeList.id] &&
@@ -2520,23 +2575,27 @@ App.store = (function () {
                 }
             }
             const needle = searchOf("tv").trim().toLowerCase()
-            const sortedCatList = catList.slice().sort((a, b) => compareCategories(a.name, b.name))
-            const rows = sortedCatList.map((cat) => ({
+            const filteredCats = state.parentalLocked
+                ? catList.filter((cat) => !isAdultCategoryName(cat.name))
+                : catList.slice()
+            const sortedCatList = filteredCats.sort((a, b) => compareCategories(a.name, b.name))
+            const regularRows = sortedCatList.map((cat) => ({
                 name: cat.name,
                 id: cat.id,
                 count: channelCounts[cat.name] || cat.count || 0,
                 sources: 1,
             }))
+            const rows = specialRows.concat(regularRows)
             const visible = needle
                 ? rows.filter((row) => row.name.toLowerCase().indexOf(needle) !== -1)
                 : rows
             return {
                 rows: visible,
-                total: rows.length,
+                total: regularRows.length,
                 count: needle ? formatCount(visible.length) : "",
                 label: `${(activeList ? `${activeList.name} · ` : "") +
-                    formatCount(rows.length) +
-                    (rows.length === 1 ? " category" : " categories")}`,
+                    formatCount(regularRows.length) +
+                    (regularRows.length === 1 ? " catégorie" : " catégories")}`,
             }
         }
 
@@ -2546,6 +2605,7 @@ App.store = (function () {
             if (scope && channel.listId !== scope) return
             if (!matchesMedia(channel, state.mediaType)) return
             const group = channel.group || "Otros"
+            if (state.parentalLocked && isAdultCategoryName(group)) return
             counts[group] = (counts[group] || 0) + 1
             lists[group] = lists[group] || {}
             lists[group][channel.listId] = 1
@@ -2553,9 +2613,10 @@ App.store = (function () {
 
         const needle = searchOf("tv").trim().toLowerCase()
         const names = Object.keys(counts).sort(compareCategories)
-        const rows = names.map((name) => {
+        const regularRows = names.map((name) => {
             return { name, count: counts[name], sources: Object.keys(lists[name]).length }
         })
+        const rows = specialRows.concat(regularRows)
         const visible = needle
             ? rows.filter((row) => {
                   return row.name.toLowerCase().indexOf(needle) !== -1
@@ -2569,34 +2630,107 @@ App.store = (function () {
         const list = scope ? listById(scope) : null
         return {
             rows: visible,
-            total: rows.length,
+            total: regularRows.length,
             count: needle ? formatCount(visible.length) : "",
             label: `${(list ? `${list.name} · ` : "") +
-                formatCount(rows.length) +
-                (rows.length === 1 ? " category" : " categories")
-                } · ${formatCount(channels)} channels`,
+                formatCount(regularRows.length) +
+                (regularRows.length === 1 ? " catégorie" : " catégories")
+                } · ${formatCount(channels)} contenus`,
         }
+    }
+
+    function extractYear(channel) {
+        if (!channel) return 0
+        if (channel.year && /^\d{4}$/.test(String(channel.year).trim())) {
+            return parseInt(String(channel.year).trim(), 10)
+        }
+        if (channel.releaseDate) {
+            const m = String(channel.releaseDate).match(/\b(19\d{2}|20\d{2})\b/)
+            if (m) return parseInt(m[1], 10)
+        }
+        const mTitle = String(channel.name || "").match(/[\(\[\s](19\d{2}|20\d{2})[\)\]\s]?/)
+        return mTitle ? parseInt(mTitle[1], 10) : 0
+    }
+
+    function extractRating(channel) {
+        if (!channel) return 0
+        const val = parseFloat(channel.rating || channel.rating_5based || 0)
+        return isFinite(val) ? val : 0
+    }
+
+    function sortVodChannels(channels) {
+        const mode = state.vodSort || "default"
+        if (mode === "default" || state.mediaType === "live") return channels
+        const copy = channels.slice()
+        if (mode === "az") {
+            copy.sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "fr", { sensitivity: "base" }))
+        } else if (mode === "year") {
+            copy.sort((a, b) => extractYear(b) - extractYear(a))
+        } else if (mode === "rating") {
+            copy.sort((a, b) => extractRating(b) - extractRating(a))
+        }
+        return copy
+    }
+
+    function cycleVodSort() {
+        const modes = ["default", "az", "year", "rating"]
+        const labels = {
+            default: "Tri : Par défaut",
+            az: "Tri : Alphabétique (A-Z)",
+            year: "Tri : Année (Plus récents)",
+            rating: "Tri : Note (★)",
+        }
+        const next = modes[(modes.indexOf(state.vodSort || "default") + 1) % modes.length]
+        state.vodSort = next
+        notify(labels[next] || "Tri modifié")
+        emit()
     }
 
     function visibleTvCategory() {
         const scope = state.tvSource
-        const channels = allChannels().filter((channel) => {
-            if (scope && channel.listId !== scope) return false
-            if (!matchesMedia(channel, state.mediaType)) return false
-            return (channel.group || "Otros") === state.catName
-        })
+        const globalNeedle = searchOf("tvchannels").trim()
+        let pool = []
+
+        if (state.catName === "⭐ Favoris") {
+            pool = state.favorites.filter((c) => matchesMedia(c, state.mediaType))
+        } else if (state.catName === "🕒 Récents") {
+            pool = state.recent.filter((c) => matchesMedia(c, state.mediaType))
+        } else if (globalNeedle && state.mediaType === "live") {
+            // In Android ZapActivity, the top search bar searches across ALL loaded channels or current category
+            pool = allChannels().filter((channel) => {
+                if (scope && channel.listId !== scope) return false
+                if (!matchesMedia(channel, state.mediaType)) return false
+                return true
+            })
+            if (!pool.length) {
+                pool = allChannels().filter((channel) => {
+                    if (scope && channel.listId !== scope) return false
+                    if (!matchesMedia(channel, state.mediaType)) return false
+                    return (channel.group || "Otros") === state.catName
+                })
+            }
+        } else {
+            pool = allChannels().filter((channel) => {
+                if (scope && channel.listId !== scope) return false
+                if (!matchesMedia(channel, state.mediaType)) return false
+                return (channel.group || "Otros") === state.catName
+            })
+        }
+
+        const sorted = sortVodChannels(pool)
         const isLoading = state.categoryLoading === state.catName
-        const result = view(channels, "tvchannels", {
+        const result = view(sorted, "tvchannels", {
             zone: "tvChannels",
             empty: isLoading
-                ? "Chargement des chaînes…"
-                : "Cette catégorie ne contient aucune chaîne.",
+                ? "Chargement des contenus…"
+                : state.catName === "⭐ Favoris"
+                    ? "Aucun favori enregistré dans cette section."
+                    : state.catName === "🕒 Récents"
+                        ? "Aucun historique récent dans cette section."
+                        : "Cette catégorie ne contient aucun contenu.",
         })
         result.loading = isLoading
-        result.label = `${formatCount(result.total) + (result.total === 1 ? " channel" : " channels")
-            } in ${state.catName || "Toutes"}`
-        if (result.hasMore)
-            result.label += ` · showing ${formatCount(result.items.length)} of ${formatCount(result.total)}`
+        result.label = `${formatCount(result.total)} ${result.total === 1 ? "élément" : "éléments"}`
         return result
     }
 
@@ -2765,6 +2899,100 @@ App.store = (function () {
         emit()
     }
 
+    function refreshMediaCatalog(mediaType) {
+        const list = state.lists[0]
+        if (!list) {
+            notify("Aucun serveur connecté")
+            return Promise.resolve()
+        }
+        const label = mediaType === "movie" ? "Films" : mediaType === "series" ? "Séries" : "TV en Direct"
+        if (state.categories[list.id]) {
+            delete state.categories[list.id][mediaType]
+        }
+        if (state.loadedCategories[list.id]) {
+            Object.keys(state.loadedCategories[list.id]).forEach((k) => {
+                if (k.startsWith(mediaType + ":")) delete state.loadedCategories[list.id][k]
+            })
+        }
+        notify(`Actualisation du catalogue ${label}…`)
+        return ensureCategories(list.id, mediaType)
+            .then((cats) => {
+                notify(`Catalogue ${label} actualisé (${cats ? cats.length : 0} catégories)`)
+            })
+            .catch((err) => {
+                notify(`Erreur : ${err.message}`)
+            })
+    }
+
+    function cycleDns() {
+        const options = ["1.1.1.1 (Cloudflare)", "8.8.8.8 (Google)", "Système (Défaut)"]
+        const idx = options.indexOf(state.dnsPref)
+        const next = options[(idx + 1) % options.length]
+        state.dnsPref = next
+        notify(`DNS configuré sur : ${next}`)
+        emit()
+    }
+
+    function toggleVpn() {
+        state.vpnEnabled = !state.vpnEnabled
+        notify(
+            state.vpnEnabled
+                ? "🛡️ Cloudflare WARP (Anti-Bridage) : ACTIVÉ"
+                : "🛡️ Cloudflare WARP : DÉSACTIVÉ",
+        )
+        emit()
+    }
+
+    function toggleParental() {
+        state.parentalLocked = !state.parentalLocked
+        notify(
+            state.parentalLocked
+                ? "🔒 Contrôle parental : ACTIVÉ (Catégories 18+ masquées)"
+                : "🔓 Contrôle parental : DÉSACTIVÉ",
+        )
+        emit()
+    }
+
+    function toggleStats() {
+        state.statsVisible = !state.statsVisible
+        emit()
+    }
+
+    function openGlobalSearch() {
+        set({ globalSearchOpen: true, globalSearchQuery: "" })
+        focus("globalSearchInput", 0, 0)
+    }
+
+    function closeGlobalSearch() {
+        set({ globalSearchOpen: false, globalSearchQuery: "" })
+        if (state.screen === "home") focus("homeCards", 0, 0)
+    }
+
+    function setGlobalSearchQuery(q) {
+        set({ globalSearchQuery: String(q || "") })
+    }
+
+    function globalSearchResults() {
+        const q = (state.globalSearchQuery || "").trim()
+        if (!q || q.length < 2) return []
+        const pool = allChannels()
+        return App.api.match(pool, q).slice(0, 60)
+    }
+
+    function changeAccountPin() {
+        if (App.player) App.player.stop()
+        set({
+            screen: "pin",
+            pinEntry: "",
+            pinError: "",
+            pinLoading: false,
+            pinSubmitted: false,
+            selectedMovie: null,
+            globalSearchOpen: false,
+        })
+        focus("pinGrid", 0, 0)
+    }
+
     return {
         state,
         setCanInstallPwa,
@@ -2797,6 +3025,8 @@ App.store = (function () {
         switchServer,
         openSeries,
         closeSeries,
+        openMovieDetail,
+        closeMovieDetail,
         playSeriesEpisode,
         openTv,
         openMedia,
@@ -2870,5 +3100,16 @@ App.store = (function () {
         stats,
         parseDuration,
         categoryPriority,
+        cycleVodSort,
+        refreshMediaCatalog,
+        cycleDns,
+        toggleVpn,
+        toggleParental,
+        toggleStats,
+        openGlobalSearch,
+        closeGlobalSearch,
+        setGlobalSearchQuery,
+        globalSearchResults,
+        changeAccountPin,
     }
 })()

@@ -1,14 +1,14 @@
 {
-  "name": "Family Web Stream",
+  "name": "Family Stream",
   "short_name": "Family Stream",
-  "description": "Application Web TV, Films, Séries et IPTV",
+  "description": "Application TV en Direct, Films & Séries VOD",
   "start_url": "./",
   "scope": "./",
   "id": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#050505",
-  "theme_color": "#050505",
+  "background_color": "#0b021b",
+  "theme_color": "#0b021b",
   "categories": ["entertainment", "video", "multimedia"],
   "icons": [
     {

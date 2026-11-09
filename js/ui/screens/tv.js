@@ -7,14 +7,10 @@ App.uiScreens = App.uiScreens || {}
     const html = kit.html
     const clock = kit.clock
     const useEffect = kit.useEffect
-    const Bar = kit.Bar
-    const Search = kit.Search
-    const ChannelList = kit.ChannelList
-    const useRef = kit.useRef
+    const BrandLogo = kit.BrandLogo
 
     const player = App.player
 
-    // The stylesheet ships both spellings of mask subtraction; accept either.
     function supportsHole() {
         if (!window.CSS || !window.CSS.supports) return false
         return (
@@ -23,7 +19,6 @@ App.uiScreens = App.uiScreens || {}
         )
     }
 
-    // CSS pixels: AVPlay converts to its grid at the other end.
     function previewBox() {
         const element = document.getElementById("previewStage")
         return element && element.getBoundingClientRect ? element.getBoundingClientRect() : null
@@ -41,15 +36,12 @@ App.uiScreens = App.uiScreens || {}
         }
     }
 
-    // The rect goes on the document root: the card's own mask reads the same variables.
     function setHole() {
         const box = previewBox()
         const layer = document.getElementById("backdrop")
         const stage = document.getElementById("previewStage")
         if (!box || !layer) return
         const rootStyle = document.documentElement.style
-        // One pixel per side: the focus edge lives on the card border, and flush to the
-        // edge the mask ate it right where the video is (the border was cut there).
         const inset = 1
         rootStyle.setProperty("--hole-x", `${Math.round(box.left + inset)}px`)
         rootStyle.setProperty("--hole-y", `${Math.round(box.top + inset)}px`)
@@ -61,142 +53,582 @@ App.uiScreens = App.uiScreens || {}
         }
     }
 
-    const iconTvBig = kit.svg(
-        html`<rect
-                x="2.5"
-                y="5"
-                width="19"
-                height="13"
-                rx="2"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.4"
-            /><path
-                d="M8.5 21h7"
-                stroke="currentColor"
-                stroke-width="1.4"
-                stroke-linecap="round"
-            />`,
-        64,
-    )
+    function MovieDetailOverlay() {
+        const movie = store.state.selectedMovie
+        if (!movie) return null
+        const listId = movie.listId || (store.state.lists[0] && store.state.lists[0].id)
+        const isFav = store.isFavorite(listId, movie)
+        const synopsis =
+            movie.description ||
+            movie.plot ||
+            movie.desc ||
+            "Aucun synopsis disponible pour ce film."
+        const rating = movie.rating || movie.rating_5based || ""
+        const year = movie.year || movie.releaseDate || "—"
+        const duration = movie.duration ? `${movie.duration} min` : "HD / 4K"
+        const genre = movie.genre || movie.group || "Cinéma & VOD"
+        const director = movie.director || "Non spécifié"
+        const actors = movie.actors || movie.cast || "Non spécifié"
 
-    function Preview() {
-        const state = store.state
-        const channel = state.preview
-        if (!channel) {
-            return html`<div class="preview-card" id="previewCard">
-                <div class="preview-stage" id="previewStage">
-                    <div class="preview-empty" id="previewEmpty">
-                        <span class="preview-icon">${iconTvBig}</span>
-                        <p class="preview-hint">
-                            ${state.mediaType === "movie" ? "Sélectionnez un film pour voir son synopsis" : state.mediaType === "series" ? "Sélectionnez une série pour voir ses détails" : "Select a channel to see it here"}
-                        </p>
+        return html`<div class="fs-media-info-overlay" id="movieDetailModal">
+            ${movie.logo
+                ? html`<div
+                      class="fs-media-info-backdrop"
+                      style=${{ backgroundImage: `url(${JSON.stringify(movie.logo)})` }}
+                  ></div>`
+                : null}
+            <div class="fs-media-info-scrim"></div>
+
+            <div class="fs-media-info-content">
+                <header class="fs-media-info-topbar">
+                    <button
+                        type="button"
+                        class="fs-btn-back-pill"
+                        id="movieDetailBack"
+                        tabindex="-1"
+                        onClick=${() => store.closeMovieDetail()}
+                    >
+                        ← Back
+                    </button>
+                    <${BrandLogo} compact=${true} />
+                    <span class="fs-media-info-tag">FILM VOD</span>
+                </header>
+
+                <div class="fs-media-info-body">
+                    <div class="fs-media-poster-card">
+                        <div class="fs-media-poster-img" style=${kit.logoStyle(movie.logo)}>
+                            ${movie.logo
+                                ? null
+                                : html`<span class="fs-vod-placeholder">
+                                      ${kit.initial(movie.name)}
+                                  </span>`}
+                        </div>
+                    </div>
+
+                    <div class="fs-media-details-col">
+                        <h1 class="fs-media-title">${movie.name}</h1>
+                        <div class="fs-media-rating-row">
+                            <span class="fs-media-stars">
+                                ★ ★ ★ ★ ☆ ${rating ? `(${rating})` : ""}
+                            </span>
+                            <span class="fs-media-badge-hd">FULL HD</span>
+                        </div>
+
+                        <div class="fs-media-meta-grid">
+                            <div class="fs-media-meta-row">
+                                <span class="fs-meta-label">Directed By:</span>
+                                <span class="fs-meta-val">${director}</span>
+                            </div>
+                            <div class="fs-media-meta-row">
+                                <span class="fs-meta-label">Release Date:</span>
+                                <span class="fs-meta-val">${year}</span>
+                            </div>
+                            <div class="fs-media-meta-row">
+                                <span class="fs-meta-label">Duration:</span>
+                                <span class="fs-meta-val">${duration}</span>
+                            </div>
+                            <div class="fs-media-meta-row">
+                                <span class="fs-meta-label">Genre:</span>
+                                <span class="fs-meta-val">${genre}</span>
+                            </div>
+                            <div class="fs-media-meta-row">
+                                <span class="fs-meta-label">Cast:</span>
+                                <span class="fs-meta-val">${actors}</span>
+                            </div>
+                        </div>
+
+                        <div class="fs-media-divider"></div>
+
+                        <p class="fs-media-synopsis">${synopsis}</p>
+
+                        <div class="fs-media-actions" id="movieDetailActions">
+                            <button
+                                type="button"
+                                class="fs-btn-play-gold"
+                                id="btnMoviePlay"
+                                tabindex="-1"
+                                onClick=${() => {
+                                    const item = movie
+                                    store.closeMovieDetail()
+                                    store.play(item, listId, store.visibleTvCategory().items)
+                                }}
+                            >
+                                ▶ Lecture
+                            </button>
+                            <button
+                                type="button"
+                                class="fs-btn-fav-outline"
+                                id="btnMovieFav"
+                                tabindex="-1"
+                                onClick=${() => store.toggleFavorite(movie, listId)}
+                            >
+                                ${isFav ? "❤️ Favori" : "🤍 Favori"}
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>`
+            </div>
+        </div>`
+    }
+
+    function LiveZapView() {
+        const state = store.state
+        const view = store.tvCategories()
+        const channels = store.visibleTvCategory()
+        const rows = view.rows
+        const preview = state.preview
+        const listId =
+            (preview && preview.listId) || (state.lists[0] && state.lists[0].id) || "source"
+        const isFav = preview ? store.isFavorite(listId, preview) : false
+        const program = preview ? store.programOf(preview) : null
+        const next = preview ? store.nextOf(preview) : null
+
+        function onChannelClick(channel) {
+            const isMobile =
+                typeof window !== "undefined" &&
+                (window.innerWidth <= 768 ||
+                    (window.matchMedia && window.matchMedia("(max-width: 768px)").matches))
+            if (isMobile) {
+                store.play(channel, channel.listId || listId, channels.items)
+            } else {
+                store.selectPreview(channel)
+            }
         }
 
-        // VOD Mode: Synopsis, tags, details and Start button (No stream preview)
-        if (state.mediaType === "movie" || state.mediaType === "series") {
-            const isMovie = state.mediaType === "movie"
-            const synopsis =
-                channel.description ||
-                channel.plot ||
-                channel.desc ||
-                "Aucun résumé disponible pour ce titre."
-            const durationText = channel.duration ? `${channel.duration} min` : ""
-            const ratingText = channel.rating ? `★ ${channel.rating}` : ""
-            const yearText = channel.year || ""
-            const metaTags = [yearText, durationText, ratingText, channel.genre || channel.group].filter(Boolean)
-
-            return html`<div class="preview-card vod-preview-card" id="previewCard">
-                <div class="vod-poster-stage" id="previewStage">
-                    <span class="preview-logo vod-poster" style=${kit.logoStyle(channel.logo)}>
-                        ${channel.logo ? null : html`<span class="preview-letter">${kit.initial(channel.name)}</span>`}
-                    </span>
+        return html`<section class="fs-zap-screen" id="screen-tv">
+            <!-- Top Bar (activity_zap.xml) -->
+            <header class="fs-zap-topbar">
+                <button
+                    type="button"
+                    class="fs-round-back"
+                    id="zapBackBtn"
+                    tabindex="-1"
+                    title="Retour à l'accueil"
+                    onClick=${() => store.goHome()}
+                >
+                    ←
+                </button>
+                <h1 class="fs-zap-title">Live TV</h1>
+                <div class="fs-zap-search-wrap">
+                    <span class="fs-zap-search-icon">🔍</span>
+                    <input
+                        type="text"
+                        id="tvChannelSearch"
+                        class="fs-zap-search-input"
+                        placeholder="Rechercher une chaîne dans toutes les catégories…"
+                        value=${store.searchOf("tvchannels")}
+                        autocomplete="off"
+                        tabindex="-1"
+                        onInput=${(e) => store.setSearch("tvchannels", e.target.value)}
+                    />
                 </div>
-                <div class="vod-details">
-                    <h2 class="preview-name vod-title">${channel.name}</h2>
-                    ${metaTags.length ? html`<div class="vod-tags">${metaTags.map((t) => html`<span class="vod-tag">${t}</span>`)}</div>` : null}
-                    <div class="vod-synopsis-box">
-                        <p class="vod-synopsis">${synopsis}</p>
-                    </div>
-                    ${channel.director ? html`<p class="vod-meta-item"><strong>Réalisateur :</strong> ${channel.director}</p>` : null}
-                    ${channel.actors ? html`<p class="vod-meta-item"><strong>Distribution :</strong> ${channel.actors}</p>` : null}
-                    <div class="vod-play-action">
-                        <button
-                            class="btn primary vod-start-btn"
-                            id="playVodBtn"
+            </header>
+
+            <!-- 3-Panel Body: Categories (28%) | Channels (34%) | Preview & EPG (38%) -->
+            <div class="fs-zap-body" id="browse">
+                <!-- Panel 1: Categories -->
+                <div class="fs-zap-col-cats">
+                    <div class="fs-zap-filter-box">
+                        <span class="fs-zap-filter-icon">📁</span>
+                        <input
+                            type="text"
+                            id="tvSearch"
+                            class="fs-zap-filter-input"
+                            placeholder="Filtrer les catégories…"
+                            value=${store.searchOf("tv")}
+                            autocomplete="off"
                             tabindex="-1"
-                            onClick=${function () {
-                                if (isMovie) {
-                                    store.play(channel, channel.listId, store.visibleTvCategory().items)
-                                } else {
-                                    store.openSeries(channel)
+                            onInput=${(e) => store.setSearch("tv", e.target.value)}
+                        />
+                    </div>
+
+                    <div class="fs-zap-list" id="tvCats">
+                        ${rows.map((row) => {
+                            const selected = row.name === state.catName
+                            return html`<button
+                                type="button"
+                                class=${`row tvcat fs-zap-cat-item${selected ? " selected" : ""}`}
+                                key=${row.id || row.name}
+                                data-group=${row.name}
+                                tabindex="-1"
+                                onClick=${() => store.openTvCategory(row.name)}
+                            >
+                                <span class="fs-zap-cat-name">${row.name}</span>
+                                <span class="fs-zap-cat-right">
+                                    ${row.count
+                                        ? html`<small class="fs-zap-cat-count"
+                                              >${store.formatCount(row.count)}</small
+                                          >`
+                                        : null}
+                                    <span class="fs-zap-cat-arrow">›</span>
+                                </span>
+                            </button>`
+                        })}
+                    </div>
+                </div>
+
+                <!-- Panel 2: Channels -->
+                <div class="fs-zap-col-chans">
+                    <div class="fs-zap-list" id="tvChannels">
+                        ${channels.loading
+                            ? html`<div class="fs-empty-state">
+                                  <span class="spinner"></span>
+                                  <p>Chargement des chaînes…</p>
+                              </div>`
+                            : channels.items.length === 0
+                              ? html`<div class="fs-empty-state">
+                                    <p>${channels.empty || "Aucune chaîne dans cette catégorie."}</p>
+                                </div>`
+                              : null}
+                        ${channels.items.map((channel, index) => {
+                            const isCurrent =
+                                preview &&
+                                (preview.id === channel.id && preview.name === channel.name)
+                            const fav = store.isFavorite(
+                                channel.listId || listId,
+                                channel.url || channel,
+                            )
+                            return html`<button
+                                type="button"
+                                class=${`row channel fs-zap-chan-item${isCurrent ? " playing" : ""}`}
+                                key=${channel.id || channel.url || channel.cmd || index}
+                                data-url=${channel.url}
+                                data-list=${channel.listId || listId}
+                                tabindex="-1"
+                                onClick=${() => onChannelClick(channel)}
+                            >
+                                <span class="fs-chan-num">${index + 1}</span>
+                                <span class="fs-chan-sep"></span>
+                                <span
+                                    class="fs-chan-logo"
+                                    style=${kit.logoStyle(channel.logo || "img/tv_default.png")}
+                                ></span>
+                                <span class="fs-chan-name">${channel.name}</span>
+                                ${fav ? html`<span class="fs-chan-fav">★</span>` : null}
+                                ${isCurrent ? html`<span class="fs-chan-play">▶</span>` : null}
+                            </button>`
+                        })}
+                        ${channels.hasMore
+                            ? html`<button
+                                  type="button"
+                                  class="row channel fs-zap-chan-item load-more"
+                                  tabindex="-1"
+                                  onClick=${store.loadMore}
+                              >
+                                  <span class="fs-chan-name">
+                                      Afficher plus (${store.formatCount(channels.items.length)} /
+                                      ${store.formatCount(channels.total)})
+                                  </span>
+                              </button>`
+                            : null}
+                    </div>
+                    <div class="fs-zap-dl-status">
+                        ✓ Liste téléchargée · ${store.formatCount(channels.total)} chaînes
+                    </div>
+                </div>
+
+                <!-- Panel 3: Live Video Preview + Channel Info + Action Buttons -->
+                <div class="fs-zap-col-preview">
+                    <div
+                        class="fs-zap-preview-box"
+                        id="tvPreview"
+                        tabindex="-1"
+                        onClick=${() => {
+                            if (preview) {
+                                store.play(preview, preview.listId || listId, channels.items)
+                            }
+                        }}
+                    >
+                        <div class="preview-stage" id="previewStage">
+                            ${preview
+                                ? html`<div class="fs-preview-overlay-logo">
+                                      <span
+                                          class="fs-preview-fallback-logo"
+                                          style=${kit.logoStyle(preview.logo || "img/tv_default.png")}
+                                      ></span>
+                                      ${!preview.url && preview.cmd
+                                          ? html`<div class="fs-preview-loading">
+                                                <span class="spinner"></span>
+                                                <span>Ouverture du flux…</span>
+                                            </div>`
+                                          : null}
+                                  </div>`
+                                : html`<div class="fs-preview-empty">
+                                      <span>📺</span>
+                                      <p>Sélectionnez une chaîne pour l'aperçu en direct</p>
+                                  </div>`}
+                        </div>
+                    </div>
+
+                    <div class="fs-zap-info-block">
+                        <h2 class="fs-zap-preview-title">
+                            ${preview ? preview.name : "Aucune chaîne sélectionnée"}
+                        </h2>
+                        <p class="fs-zap-preview-epg">
+                            ${program && program.title
+                                ? `${program.title} (${clock(program.start)} - ${clock(program.end)})`
+                                : next && next.title
+                                  ? `À suivre : ${next.title}`
+                                  : preview && preview.group
+                                    ? `${preview.group} • Flux Haute Définition`
+                                    : "Direct TV • Flux Haute Définition"}
+                        </p>
+                        <p class="fs-zap-preview-status">● En direct</p>
+                    </div>
+
+                    <div class="fs-zap-actions-row" id="zapPreviewActions">
+                        <button
+                            type="button"
+                            class="fs-zap-action-btn"
+                            id="btnZapFav"
+                            tabindex="-1"
+                            disabled=${!preview}
+                            onClick=${() => {
+                                if (preview) store.toggleFavorite(preview, listId)
+                            }}
+                        >
+                            ${isFav ? "❤️ Favori" : "🤍 Favori"}
+                        </button>
+                        <button
+                            type="button"
+                            class="fs-zap-action-btn"
+                            id="btnZapLang"
+                            tabindex="-1"
+                            disabled=${!preview}
+                            onClick=${() => {
+                                store.notify("🌐 Piste audio par défaut active")
+                            }}
+                        >
+                            🌐 Langue
+                        </button>
+                        <button
+                            type="button"
+                            class="fs-zap-action-btn"
+                            id="btnZapGuide"
+                            tabindex="-1"
+                            disabled=${!preview}
+                            onClick=${() => {
+                                if (preview) {
+                                    store.loadProgramFor(preview)
+                                    store.notify("🕒 Guide EPG mis à jour")
                                 }
                             }}
                         >
-                            <span class="vod-action-icon">${isMovie ? "▶" : "☰"}</span>
-                            <span>${isMovie ? "Regarder le film" : "Voir les saisons & épisodes"}</span>
+                            🕒 Guide
+                        </button>
+                        <button
+                            type="button"
+                            class="fs-zap-action-btn fs-zap-btn-fullscreen"
+                            id="btnZapFullscreen"
+                            tabindex="-1"
+                            disabled=${!preview}
+                            onClick=${() => {
+                                if (preview) {
+                                    store.play(preview, preview.listId || listId, channels.items)
+                                }
+                            }}
+                        >
+                            ⛶ Plein Écran
                         </button>
                     </div>
                 </div>
-            </div>`
+            </div>
+        </section>`
+    }
+
+    function VodBrowserView() {
+        const state = store.state
+        const isMovie = state.mediaType === "movie"
+        const view = store.tvCategories()
+        const channels = store.visibleTvCategory()
+        const rows = view.rows
+        const sortLabels = {
+            default: "⚡ Trier ▼",
+            az: "⚡ Tri: A-Z ▼",
+            year: "⚡ Tri: Année ▼",
+            rating: "⚡ Tri: Note ▼",
         }
 
-        const program = store.programOf(channel)
-        const next = store.nextOf(channel)
-        const progress = store.programProgress(program)
-        return html`<div class="preview-card" id="previewCard">
-            <div class="preview-stage" id="previewStage">
-                <span class="preview-logo" style=${kit.logoStyle(channel.logo)}>
-                    ${channel.logo ? null : html`<span class="preview-letter">${kit.initial(channel.name)}</span>`}
-                </span>
-                ${!channel.url && channel.cmd ? html`<div class="preview-busy"><span class="spinner"></span><span>Préparation du flux…</span></div>` : null}
-            </div>
-            <div class="preview-info">
-                <h2 class="preview-name">${channel.name}</h2>
-                <p class="preview-group">${channel.group || ""}</p>
-                ${
-                    program
-                        ? html`<div class="preview-guide">
-                              <p class="preview-program">
-                                  ${program.title}
-                                  <span class="ov-time"
-                                      >${clock(program.start)} – ${clock(program.end)}</span
+        function onCardClick(item) {
+            if (item.mediaType === "series" || state.mediaType === "series") {
+                store.openSeries(item)
+            } else {
+                store.openMovieDetail(item)
+            }
+        }
+
+        return html`<section class="fs-vod-screen" id="screen-tv">
+            <!-- Top Bar (activity_vod_browser.xml) -->
+            <header class="fs-zap-topbar">
+                <button
+                    type="button"
+                    class="fs-round-back"
+                    id="vodBackBtn"
+                    tabindex="-1"
+                    title="Retour à l'accueil"
+                    onClick=${() => store.goHome()}
+                >
+                    ←
+                </button>
+                <h1 class="fs-zap-title">${isMovie ? "Films & VOD" : "Séries TV"}</h1>
+                <div class="fs-zap-search-wrap">
+                    <span class="fs-zap-search-icon">🔍</span>
+                    <input
+                        type="text"
+                        id="tvChannelSearch"
+                        class="fs-zap-search-input"
+                        placeholder=${isMovie
+                            ? "Rechercher un film…"
+                            : "Rechercher une série…"}
+                        value=${store.searchOf("tvchannels")}
+                        autocomplete="off"
+                        tabindex="-1"
+                        onInput=${(e) => store.setSearch("tvchannels", e.target.value)}
+                    />
+                </div>
+                <button
+                    type="button"
+                    class="fs-vod-sort-btn"
+                    id="btnVodSort"
+                    tabindex="-1"
+                    onClick=${() => store.cycleVodSort()}
+                >
+                    ${sortLabels[state.vodSort || "default"]}
+                </button>
+            </header>
+
+            <!-- 2-Column Body: Genres Sidebar (26%) | Poster Grid (74%) -->
+            <div class="fs-vod-body" id="browse">
+                <!-- Left Column: Genres Sidebar -->
+                <div class="fs-vod-col-genres">
+                    <div class="fs-zap-filter-box">
+                        <span class="fs-zap-filter-icon">🎬</span>
+                        <input
+                            type="text"
+                            id="tvSearch"
+                            class="fs-zap-filter-input"
+                            placeholder="Filtrer les genres…"
+                            value=${store.searchOf("tv")}
+                            autocomplete="off"
+                            tabindex="-1"
+                            onInput=${(e) => store.setSearch("tv", e.target.value)}
+                        />
+                    </div>
+
+                    <div class="fs-zap-list" id="tvCats">
+                        ${rows.map((row) => {
+                            const selected = row.name === state.catName
+                            return html`<button
+                                type="button"
+                                class=${`row tvcat fs-zap-cat-item${selected ? " selected" : ""}`}
+                                key=${row.id || row.name}
+                                data-group=${row.name}
+                                tabindex="-1"
+                                onClick=${() => store.openTvCategory(row.name)}
+                            >
+                                <span class="fs-zap-cat-name">${row.name}</span>
+                                <span class="fs-zap-cat-right">
+                                    ${row.count
+                                        ? html`<small class="fs-zap-cat-count"
+                                              >${store.formatCount(row.count)}</small
+                                          >`
+                                        : null}
+                                    <span class="fs-zap-cat-arrow">›</span>
+                                </span>
+                            </button>`
+                        })}
+                    </div>
+                </div>
+
+                <!-- Right Column: Category Header + Poster Grid -->
+                <div class="fs-vod-col-grid">
+                    <div class="fs-vod-cat-bar">
+                        <span class="fs-vod-cat-title">${state.catName || "Catalogue"}</span>
+                        <span class="fs-vod-cat-count">${channels.label}</span>
+                    </div>
+
+                    <div class="fs-vod-grid-scroll" id="tvChannels">
+                        ${channels.loading
+                            ? html`<div class="fs-empty-state">
+                                  <span class="spinner"></span>
+                                  <p>Chargement du catalogue…</p>
+                              </div>`
+                            : channels.items.length === 0
+                              ? html`<div class="fs-empty-state">
+                                    <p>${channels.empty || "Aucun titre dans cette catégorie."}</p>
+                                </div>`
+                              : html`<div class="fs-vod-grid">
+                                    ${channels.items.map((item, idx) => {
+                                        const listId =
+                                            item.listId ||
+                                            (state.lists[0] && state.lists[0].id) ||
+                                            "source"
+                                        const fav = store.isFavorite(listId, item)
+                                        const rating = item.rating || item.rating_5based || ""
+                                        const sub = item.year || item.releaseDate || item.group || ""
+                                        return html`<button
+                                            type="button"
+                                            class="row channel fs-vod-card"
+                                            key=${item.id || item.streamId || item.url || idx}
+                                            tabindex="-1"
+                                            onClick=${() => onCardClick(item)}
+                                        >
+                                            <div
+                                                class="fs-vod-poster"
+                                                style=${kit.logoStyle(item.logo)}
+                                            >
+                                                ${item.logo
+                                                    ? null
+                                                    : html`<span class="fs-vod-placeholder">
+                                                          ${kit.initial(item.name)}
+                                                      </span>`}
+                                                ${rating
+                                                    ? html`<span class="fs-vod-rating-badge">
+                                                          ★ ${rating}
+                                                      </span>`
+                                                    : null}
+                                                ${fav
+                                                    ? html`<span class="fs-vod-fav-badge">❤️</span>`
+                                                    : null}
+                                            </div>
+                                            <div class="fs-vod-meta">
+                                                <span class="fs-vod-title">${item.name}</span>
+                                                <span class="fs-vod-year">${sub}</span>
+                                            </div>
+                                        </button>`
+                                    })}
+                                </div>`}
+                        ${channels.hasMore
+                            ? html`<div class="fs-vod-load-more">
+                                  <button
+                                      type="button"
+                                      class="row channel fs-btn-secondary"
+                                      tabindex="-1"
+                                      onClick=${store.loadMore}
                                   >
-                              </p>
-                              ${
-                                  progress !== null
-                                      ? html`<div class="ov-progress">
-                                            <span
-                                                class="ov-progress-fill"
-                                                style=${`width:${progress}%`}
-                                            ></span>
-                                        </div>`
-                                      : null
-                              }
-                          </div>`
-                        : null
-                }
-                ${
-                    next
-                        ? html`<p class="preview-next">
-                              <span class="ov-next-tag">Next</span>${next.title}
-                              ${next.start ? html`<span class="ov-time">${clock(next.start)} – ${clock(next.end)}</span>` : null}
-                          </p>`
-                        : null
-                }
-                <p class="preview-open">Press OK to watch full screen</p>
+                                      Afficher plus (${store.formatCount(channels.items.length)} /
+                                      ${store.formatCount(channels.total)})
+                                  </button>
+                              </div>`
+                            : null}
+                    </div>
+                </div>
             </div>
-        </div>`
+
+            <!-- Bottom Status Bar (activity_vod_browser.xml) -->
+            <footer class="fs-vod-bottom-bar">
+                <span>Sélectionnez un titre et appuyez sur OK pour voir les détails</span>
+                <span>◀▶ Navigation • OK Voir • ↩ Retour</span>
+            </footer>
+
+            <${MovieDetailOverlay} />
+        </section>`
     }
 
     function TvScreen() {
         const state = store.state
 
         useEffect(() => {
-            // For VOD (Movies & Series): Do NOT auto-play in preview box!
             if (state.mediaType === "movie" || state.mediaType === "series") {
                 player.stop()
                 return
@@ -236,109 +668,10 @@ App.uiScreens = App.uiScreens || {}
             }
         }, [state.preview, state.mediaType])
 
-        const view = store.tvCategories()
-        const channels = store.visibleTvCategory()
-        const pending = store.loadingRows(state.mediaType)
-        const rows = store.tvCategories().rows
-
-        return html`<section class="screen" id="screen-tv">
-            <${Bar}
-                title=${state.mediaType === "movie" ? "Movies" : state.mediaType === "series" ? "Series" : "Live TV"}
-                meta=${view.label}
-                metaId="tvMeta"
-                titleId="tvTitle"
-                actions=${html`<div class="bar-actions" id="tvActions">
-                    <button
-                        class="btn"
-                        id="catsBtn"
-                        tabindex="-1"
-                        onClick=${function () {
-                            store.openCategories()
-                        }}
-                    >
-                        Categories
-                    </button>
-                </div>`}
-                search=${html`<${Search}
-                    id="tvSearch"
-                    countId="tvSearchCount"
-                    scope="tv"
-                    resetKey="tv"
-                    placeholder="Search categories"
-                    count=${view.count}
-                    onInput=${function (value) {
-                        store.setSearch("tv", value)
-                    }}
-                />`}
-            />
-            ${state.lists.length ? null : html`<p class="empty">Every source's channels meet here. Add one to start.</p>`}
-            <div class="browse" id="browse">
-                <div class="browse-cats" id="tvCats">
-                    ${pending.map((row) => {
-                        return html`<div class="row pending" key=${`load-${row.key}`}>
-                            <span class="pending-dot"></span>
-                            <span class="row-main">
-                                <span class="row-name">${row.name}</span>
-                                <span class="row-sub"
-                                    >${row.label}${
-                                        row.count !== undefined
-                                            ? ` · ${store.formatCount(row.count)} ${
-                                                  row.mediaType === "movie"
-                                                      ? "films"
-                                                      : row.mediaType === "series"
-                                                        ? "series"
-                                                        : "channels"
-                                              }`
-                                            : "…"
-                                    }</span
-                                >
-                            </span>
-                        </div>`
-                    })}
-                    ${
-                        rows.length || pending.length
-                            ? null
-                            : html`<p class="empty">
-                                  ${view.total ? "No category matches your search." : "No categories yet."}
-                              </p>`
-                    }
-                    ${rows.map((row) => {
-                        return html`<button
-                            class=${`row tvcat${row.name === state.catName ? " selected" : ""}`}
-                            tabindex="-1"
-                            data-group=${row.name}
-                            onClick=${function () {
-                                store.openTvCategory(row.name)
-                            }}
-                        >
-                            <span class="row-main">
-                                <span class="row-name">${row.name}</span>
-                                ${row.sources > 1 ? html`<span class="row-sub">${row.sources} sources</span>` : null}
-                            </span>
-                            <span class="row-count">${store.formatCount(row.count)}</span>
-                        </button>`
-                    })}
-                </div>
-                <div class="browse-channels">
-                    <${ChannelList} id="tvChannels" view=${channels} detail=${true} />
-                </div>
-                <div
-                    class="browse-preview"
-                    id="tvPreview"
-                    tabindex="-1"
-                    onClick=${function () {
-                        if (state.preview)
-                            store.play(
-                                state.preview,
-                                state.preview.listId,
-                                store.visibleTvCategory().items,
-                            )
-                    }}
-                >
-                    <${Preview} />
-                </div>
-            </div>
-        </section>`
+        if (state.mediaType === "movie" || state.mediaType === "series") {
+            return html`<${VodBrowserView} />`
+        }
+        return html`<${LiveZapView} />`
     }
 
     App.uiScreens.tv = TvScreen

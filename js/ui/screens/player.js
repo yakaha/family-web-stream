@@ -245,6 +245,23 @@ App.uiScreens = App.uiScreens || {}
                     <span class="player-btn-label">${isFullscreen ? "Réduire" : "Plein écran"}</span>
                 </button>
             </div>
+            ${state.statsVisible
+                ? html`<div class="fs-stats-hud" id="statsContainer">
+                      <div class="fs-stats-title">📊 STATS POUR NERDS</div>
+                      <div class="fs-stats-line">
+                          Flux : <strong>${vod ? "VOD / Série" : "Direct TV"}</strong>
+                      </div>
+                      <div class="fs-stats-line">
+                          Moteur : <strong>${player.hardware() ? "Samsung AVPlay" : "HTML5 / HLS"}</strong>
+                      </div>
+                      <div class="fs-stats-line">
+                          Format : <strong>${state.aspectRatio === "fill" ? "16:9 Étiré" : state.aspectRatio === "cover" ? "Zoom" : "Original"}</strong>
+                      </div>
+                      <div class="fs-stats-line">
+                          DNS / Réseau : <strong>${state.dnsPref} ${state.vpnEnabled ? "• WARP ON" : ""}</strong>
+                      </div>
+                  </div>`
+                : null}
             ${
                 state.playStatus === "opening"
                     ? html`<div class="player-status" id="playerStatus">
@@ -522,21 +539,68 @@ App.uiScreens = App.uiScreens || {}
                                               <strong>${state.aspectRatio === "fill" ? "Plein écran" : state.aspectRatio === "cover" ? "Zoom" : "Original"}</strong>
                                           </span>
                                       </button>
-                                       <button
-                                           class="btn vod-action vod-exit"
-                                           id="vodExitBtn"
-                                           tabindex="-1"
-                                           onClick=${handleExit}
-                                       >
-                                           <span class="vod-action-icon">✕</span>
-                                           <span class="vod-track-copy">
-                                               <small>QUITTER</small>
-                                               <strong>Retour</strong>
-                                           </span>
-                                       </button>
+                                      <button
+                                          class="btn vod-action"
+                                          id="vodStatsBtn"
+                                          tabindex="-1"
+                                          onClick=${function () {
+                                              store.toggleStats()
+                                              show()
+                                          }}
+                                      >
+                                          <span class="vod-action-icon">📊</span>
+                                          <span class="vod-track-copy">
+                                              <small>INFOS</small>
+                                              <strong>Stats</strong>
+                                          </span>
+                                      </button>
+                                      <button
+                                          class="btn vod-action vod-exit"
+                                          id="vodExitBtn"
+                                          tabindex="-1"
+                                          onClick=${handleExit}
+                                      >
+                                          <span class="vod-action-icon">✕</span>
+                                          <span class="vod-track-copy">
+                                              <small>QUITTER</small>
+                                              <strong>Retour</strong>
+                                          </span>
+                                      </button>
                                   </div>
                               </div>`
                             : html`<div class="ov-live-actions">
+                                  <button
+                                      class="btn vod-action"
+                                      id="ovPrevChan"
+                                      tabindex="-1"
+                                      onClick=${function () {
+                                          store.zap(-1)
+                                          show()
+                                      }}
+                                  >
+                                      ⏮ Préc.
+                                  </button>
+                                  <button
+                                      class="btn vod-action"
+                                      id="ovNextChan"
+                                      tabindex="-1"
+                                      onClick=${function () {
+                                          store.zap(1)
+                                          show()
+                                      }}
+                                  >
+                                      Suiv. ⏭
+                                  </button>
+                                  <button
+                                      class="btn vod-action"
+                                      id="ovZapList"
+                                      tabindex="-1"
+                                      onClick=${function () {
+                                          store.openZap()
+                                      }}
+                                  >
+                                      📋 Chaînes
+                                  </button>
                                   <button
                                       class=${`btn${saved ? " saved" : ""}`}
                                       id="ovFav"
@@ -546,7 +610,7 @@ App.uiScreens = App.uiScreens || {}
                                           show()
                                       }}
                                   >
-                                      ${saved ? "★ Retirer des favoris" : "☆ Ajouter aux favoris"}
+                                      ${saved ? "❤️ Favori" : "🤍 Favori"}
                                   </button>
                                   <button
                                       class="btn vod-action vod-aspect"
@@ -558,17 +622,28 @@ App.uiScreens = App.uiScreens || {}
                                       }}
                                   >
                                       <span class="vod-action-icon">⛶</span>
-                                      <span>${state.aspectRatio === "fill" ? "Format : Plein écran 16:9" : state.aspectRatio === "cover" ? "Format : Zoom" : "Format : Original"}</span>
+                                      <span>${state.aspectRatio === "fill" ? "Format : 16:9" : state.aspectRatio === "cover" ? "Format : Zoom" : "Format : Original"}</span>
                                   </button>
-                                   <button
-                                       class="btn vod-action ov-exit"
-                                       id="ovExitBtn"
-                                       tabindex="-1"
-                                       onClick=${handleExit}
-                                   >
-                                       <span class="vod-action-icon">✕</span>
-                                       <span>Quitter la lecture</span>
-                                   </button>
+                                  <button
+                                      class="btn vod-action"
+                                      id="ovStatsBtn"
+                                      tabindex="-1"
+                                      onClick=${function () {
+                                          store.toggleStats()
+                                          show()
+                                      }}
+                                  >
+                                      📊 Stats
+                                  </button>
+                                  <button
+                                      class="btn vod-action ov-exit"
+                                      id="ovExitBtn"
+                                      tabindex="-1"
+                                      onClick=${handleExit}
+                                  >
+                                      <span class="vod-action-icon">✕</span>
+                                      <span>Quitter</span>
+                                  </button>
                               </div>`
                     }
                 </div>

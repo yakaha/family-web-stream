@@ -219,6 +219,111 @@ App.uiKit = (function () {
         />`,
     )
 
+    const iconPremiumLive = html`<svg viewBox="0 0 24 24" width="38" height="38" class="premium-card-svg">
+        <path
+            fill="#FFFFFF"
+            d="M21,6h-7.59l3.29,-3.29L16,2l-4,4 -4,-4 -0.71,0.71L10.59,6H3C1.9,6 1,6.89 1,8v12c0,1.1 0.9,2 2,2h18c1.1,0 2,-0.9 2,-2V8C23,6.89 22.1,6 21,6zM21,20H3V8h18V20z"
+        />
+        <path fill="#7DD3FC" d="M9.5,10.5l6,3.5 -6,3.5z" />
+    </svg>`
+
+    const iconPremiumMovies = html`<svg viewBox="0 0 24 24" width="38" height="38" class="premium-card-svg">
+        <path
+            fill="#FFFFFF"
+            d="M18,4l2,4h-3l-2,-4h-2l2,4h-3l-2,-4H8l2,4H7L5,4H4C2.9,4 2.01,4.9 2.01,6L2,18c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V4H18zM20,18H4V10h16V18z"
+        />
+        <path fill="#D8B4FE" d="M10,11.5l5,2.5 -5,2.5z" />
+    </svg>`
+
+    const iconPremiumSeries = html`<svg viewBox="0 0 24 24" width="38" height="38" class="premium-card-svg">
+        <path
+            fill="#FFFFFF"
+            d="M4,6H2v14c0,1.1 0.9,2 2,2h14v-2H4V6zM20,2H8C6.9,2 6,2.9 6,4v12c0,1.1 0.9,2 2,2h12c1.1,0 2,-0.9 2,-2V4C22,2.9 21.1,2 20,2zM20,16H8V4h12V16z"
+        />
+        <path fill="#FCD34D" d="M12,6.5l5,3.5 -5,3.5z" />
+    </svg>`
+
+    const iconRefresh = html`<svg viewBox="0 0 24 24" width="16" height="16">
+        <path
+            fill="currentColor"
+            d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"
+        />
+    </svg>`
+
+    function BrandLogo(props) {
+        const compact = !!(props && props.compact)
+        const size = compact ? 36 : 44
+        return html`<div class=${`fs-brand-header${compact ? " compact" : ""}`}>
+            <svg viewBox="0 0 120 120" width=${size} height=${size} class="fs-brand-icon">
+                <path
+                    fill="rgba(59, 130, 246, 0.12)"
+                    stroke="rgba(96, 165, 250, 0.28)"
+                    stroke-width="2"
+                    d="M60,4 A56,56,0,1,1,60,116 A56,56,0,1,1,60,4z"
+                />
+                <path
+                    stroke="rgba(59, 130, 246, 0.25)"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    fill="none"
+                    d="M88,32 A40,40,0,0,1,88,88"
+                />
+                <path
+                    stroke="rgba(59, 130, 246, 0.5)"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    fill="none"
+                    d="M78,42 A26,26,0,0,1,78,78"
+                />
+                <path fill="#6366F1" d="M42,35 L42,85 L85,60 Z" />
+                <path fill="#3B82F6" d="M42,35 L42,60 L63.5,47.5 Z" />
+                <path fill="#60A5FA" d="M60,12 A48,48,0,1,1,59.9,12 Z" fill-opacity="0.06" />
+            </svg>
+            <div class="fs-brand-texts">
+                <span class="fs-brand-title">Family Stream</span>
+                ${props && props.subtitle
+                    ? html`<span class="fs-brand-sub">${props.subtitle}</span>`
+                    : null}
+            </div>
+        </div>`
+    }
+
+    function dateClockValue() {
+        const now = new Date()
+        const time = `${`0${now.getHours()}`.slice(-2)}:${`0${now.getMinutes()}`.slice(-2)}`
+        const days = ["Dim.", "Lun.", "Mar.", "Mer.", "Jeu.", "Ven.", "Sam."]
+        const months = [
+            "Janv.",
+            "Févr.",
+            "Mars",
+            "Avr.",
+            "Mai",
+            "Juin",
+            "Juil.",
+            "Août",
+            "Sept.",
+            "Oct.",
+            "Nov.",
+            "Déc.",
+        ]
+        const date = `${days[now.getDay()]} ${now.getDate()} ${months[now.getMonth()]}`
+        return { time, date }
+    }
+
+    function useDateClock() {
+        const state = useState(dateClockValue())
+        const setVal = state[1]
+        useEffect(() => {
+            const tick = setInterval(() => {
+                setVal(dateClockValue())
+            }, 15000)
+            return function () {
+                clearInterval(tick)
+            }
+        }, [])
+        return state[0]
+    }
+
     const TYPE_ICONS = {
         link: iconLink,
         file: iconFile,
@@ -636,6 +741,12 @@ App.uiKit = (function () {
         logoStyle,
         programText,
         iconCheck,
+        iconPremiumLive,
+        iconPremiumMovies,
+        iconPremiumSeries,
+        iconRefresh,
+        BrandLogo,
+        useDateClock,
         Rail,
         Bar,
         Search,

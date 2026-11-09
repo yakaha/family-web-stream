@@ -1,4 +1,4 @@
-const CACHE_NAME = "fws-shell-v2"
+const CACHE_NAME = "fws-shell-v3"
 
 const STATIC_ASSETS = [
     "./",
@@ -7,6 +7,12 @@ const STATIC_ASSETS = [
     "./icon.png",
     "./icon-192.png",
     "./brand.png",
+    "./img/bg_luxury_violet.jpg",
+    "./img/bg_card_live_art.jpg",
+    "./img/bg_card_movies_art.jpg",
+    "./img/bg_card_series_art.jpg",
+    "./img/family_premium_logo.png",
+    "./img/tv_default.png",
     "./css/tokens.css",
     "./css/base.css",
     "./css/lists.css",
@@ -15,6 +21,7 @@ const STATIC_ASSETS = [
     "./css/overlays.css",
     "./css/media.css",
     "./css/access.css",
+    "./css/android-theme.css",
     "./vendor/preact.umd.js",
     "./vendor/hooks.umd.js",
     "./vendor/htm.umd.js",

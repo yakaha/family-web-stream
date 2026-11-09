@@ -19,115 +19,80 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
     function defineZones() {
         zone("pinGrid", ".pin-key", {
             onEdge: function (dir) {
-                if (dir === "down" && store.state.pinEntry.length === 4) tv.set("pinActions", 0, 0)
+                if (dir === "down") tv.set("pinActions", 0, 0)
+                else if (dir === "left") tv.set("pinTools", 0, 0)
             },
         })
         zone("pinEntry", ".pin-key")
+        zone("pinTools", "#pinSubmit, #btnDnsToggle, #btnVpnToggle", {
+            onEdge: function (dir) {
+                if (dir === "right") tv.set("pinGrid", 0, 0)
+                else if (dir === "down") tv.set("pinActions", 0, 0)
+            },
+        })
         zone("pinActions", "#pinActions .pin-action", {
             onEdge: function (dir) {
                 if (dir === "up") tv.set("pinGrid", 3, 1)
+                else if (dir === "left") tv.set("pinTools", 0, 0)
             },
         })
-        zone("servers", "#serverList .server-card, #serversBack", {
+        zone("servers", "#serverList .server-card, #serversBack")
+
+        // Home Dashboard (activity_premium_home.xml)
+        zone("homeTop", "#homeTopBtns .fs-top-pill", {
             onEdge: function (dir) {
-                if (dir === "left") tv.set("rail", 0, 0)
+                if (dir === "down") tv.set("homeCards", 0, 0)
+            },
+        })
+        zone("homeCards", "#homeCards .fs-premium-card", {
+            onEdge: function (dir) {
+                if (dir === "up") tv.set("homeTop", 0, 0)
+            },
+        })
+        zone("globalSearchInput", "#globalSearchBack, #globalSearchInput", {
+            onEdge: function (dir) {
+                if (dir === "down") tv.set("globalSearchResults", 0, 0)
+            },
+        })
+        zone("globalSearchResults", "#globalSearchResults .search-result-item", {
+            onEdge: function (dir) {
+                if (dir === "up") tv.set("globalSearchInput", 0, 0)
+            },
+        })
+
+        // Series Detail (activity_series_detail.xml)
+        zone("seriesTop", "#seriesBack, #seriesFavBtn", {
+            onEdge: function (dir) {
+                if (dir === "down") tv.set("seriesSeasons", 0, 0)
             },
         })
         zone("seriesSeasons", "#seriesSeasons .season-btn", {
             onEdge: function (dir) {
-                if (dir === "left") tv.set("rail", 0, 0)
-                else if (dir === "right") tv.set("seriesEpisodes", 0, 0)
+                if (dir === "up") tv.set("seriesTop", 0, 0)
+                else if (dir === "down" || dir === "right") tv.set("seriesEpisodes", 0, 0)
             },
         })
         zone("seriesEpisodes", "#seriesEpisodes .row", {
             onEdge: function (dir) {
-                if (dir === "left") tv.set("seriesSeasons", 0, 0)
-            },
-        })
-        zone("rail", ".rail .rail-btn, .rail .rail-src", {
-            onEdge: function (dir) {
-                if (dir !== "right") return
-                const screen = store.state.screen
-                if (screen === "home") tv.set("types", 0, 0)
-                else if (screen === "tv") tv.set("tvActions", 0, 0)
-                else if (screen === "recents") tv.set("recentsSearch", 0, 0)
-                else if (screen === "favs") tv.set("favsSearch", 0, 0)
-                else if (screen === "servers") tv.set("servers", 0, 0)
-                else if (screen === "episodes") tv.set("seriesSeasons", 0, 0)
-                else if (screen === "cats") tv.set("catActions", 0, 0)
-                else if (screen === "add") tv.set(store.state.addType ? "fields" : "addTypes", 0, 0)
-                else if (screen === "edit") tv.set("fields", 0, 0)
-                else if (screen === "player")
-                    tv.set(store.state.playError ? "playError" : "overlay", 0, 0)
-                else tv.set("sources", 0, 0)
+                if (dir === "up" || dir === "left") tv.set("seriesSeasons", 0, 0)
             },
         })
 
-        zone("homeActions", "#homeActions .btn", {
+        // Movie Detail Overlay (activity_media_info.xml)
+        zone("movieDetail", "#movieDetailActions button, #movieDetailBack")
+
+        // Live TV (ZapActivity) & VOD Browser (VodBrowserActivity)
+        zone("tvTop", "#zapBackBtn, #vodBackBtn, #tvChannelSearch, #btnVodSort", {
             onEdge: function (dir) {
-                if (dir === "down") tv.set("types", 0, 0)
-                else if (dir === "left" || dir === "up") tv.set("rail", 0, 0)
-            },
-        })
-
-        zone("types", "#typeList .type", {
-            onEdge: function (dir) {
-                if (dir === "left") tv.set("rail", 0, 0)
-                else if (dir === "right") tv.set("sources", 0, 0)
-                else if (dir === "up") tv.set("homeActions", 0, 0)
-            },
-        })
-
-        zone("sources", "#sourceList .row", {
-            onEdge: function (dir) {
-                if (dir === "left") tv.set("types", 0, 0)
-                else if (dir === "up") tv.set("homeActions", 0, 0)
-                else if (dir === "right") enterEditFromRow()
-            },
-        })
-
-        let editRow = 0
-
-        function enterEditFromRow() {
-            const rows = ui.qsa("#sourceList .row.source")
-            const fromRow = rows.indexOf(document.querySelector(".focused"))
-            if (fromRow !== -1) showEdit(fromRow)
-        }
-
-        function showEdit(index) {
-            editRow = index
-            tv.set("sourceEdit", 0, 0)
-        }
-        tv.define(
-            "sourceEdit",
-            () => {
-                const buttons = ui.qsa("#sourceList .edit")
-                return buttons[editRow] ? [[buttons[editRow]]] : []
-            },
-            {
-                onEdge: function (dir) {
-                    const buttons = ui.qsa("#sourceList .edit")
-                    if (dir === "left") tv.set("sources", editRow, 0)
-                    else if (dir === "up") showEdit(Math.max(0, editRow - 1))
-                    else if (dir === "down") showEdit(Math.min(buttons.length - 1, editRow + 1))
-                    else if (dir === "right") tv.set("rail", 0, 0)
-                },
-            },
-        )
-
-        zone("tvActions", "#tvActions .btn", {
-            onEdge: function (dir) {
-                if (dir === "down") tv.set("tvSearch", 0, 0)
-                else if (dir === "right") tv.set("tvSearch", 0, 0)
-                else if (dir === "left") tv.set("rail", 0, 0)
+                if (dir === "down") tv.set("tvCats", 0, 0)
             },
         })
 
         zone("tvSearch", "#tvSearch", {
             onEdge: function (dir) {
-                if (dir === "up") tv.set("tvActions", 0, 0)
-                else if (dir === "left") tv.set("tvActions", 0, 0)
+                if (dir === "up") tv.set("tvTop", 0, 0)
                 else if (dir === "down") tv.set("tvCats", 0, 0)
+                else if (dir === "right") tv.set("tvChannels", 0, 0)
             },
         })
 
@@ -147,11 +112,16 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
                     const items = store.visibleTvCategory().items
                     let chIdx = 0
                     if (items && items.length && store.state.preview) {
-                        const found = items.findIndex((c) => (c.id && c.id === store.state.preview.id) || (c.url && c.url === store.state.preview.url) || c.name === store.state.preview.name)
+                        const found = items.findIndex(
+                            (c) =>
+                                (c.id && c.id === store.state.preview.id) ||
+                                (c.url && c.url === store.state.preview.url) ||
+                                c.name === store.state.preview.name,
+                        )
                         if (found !== -1) chIdx = found
                     }
                     tv.set("tvChannels", chIdx, 0)
-                } else if (dir === "left") tv.set("rail", 0, 0)
+                }
             },
         })
 
@@ -165,113 +135,34 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
                         if (found !== -1) catIdx = found
                     }
                     tv.set("tvCats", catIdx, 0)
-                }
-                else if (dir === "right") {
-                    if (document.getElementById("playVodBtn")) {
-                        tv.set("tvVodAction", 0, 0)
-                    } else {
+                } else if (dir === "right") {
+                    if (store.state.mediaType === "live") {
                         tv.set("tvPreview", 0, 0)
                     }
+                } else if (dir === "up") {
+                    tv.set("tvTop", 0, 0)
                 }
-                else if (dir === "up") tv.set("tvSearch", 0, 0)
             },
         })
 
-        zone("tvVodAction", "#playVodBtn", {
+        zone("tvPreview", "#tvPreview, #zapPreviewActions button", {
             onEdge: function (dir) {
                 if (dir === "left") {
                     const items = store.visibleTvCategory().items
                     let chIdx = 0
                     if (items && items.length && store.state.preview) {
-                        const found = items.findIndex((c) => (c.id && c.id === store.state.preview.id) || (c.url && c.url === store.state.preview.url) || c.name === store.state.preview.name)
+                        const found = items.findIndex(
+                            (c) =>
+                                (c.id && c.id === store.state.preview.id) ||
+                                (c.url && c.url === store.state.preview.url) ||
+                                c.name === store.state.preview.name,
+                        )
                         if (found !== -1) chIdx = found
                     }
                     tv.set("tvChannels", chIdx, 0)
+                } else if (dir === "up") {
+                    tv.set("tvTop", 0, 0)
                 }
-            },
-        })
-
-        zone("tvPreview", "#tvPreview", {
-            onEdge: function (dir) {
-                if (dir === "left") {
-                    const items = store.visibleTvCategory().items
-                    let chIdx = 0
-                    if (items && items.length && store.state.preview) {
-                        const found = items.findIndex((c) => (c.id && c.id === store.state.preview.id) || (c.url && c.url === store.state.preview.url) || c.name === store.state.preview.name)
-                        if (found !== -1) chIdx = found
-                    }
-                    tv.set("tvChannels", chIdx, 0)
-                }
-            },
-        })
-
-        zone("recentsSearch", "#recentsSearch", {
-            onEdge: function (dir) {
-                if (dir === "up") tv.set("rail", 0, 0)
-                else if (dir === "down") tv.set("recentsList", 0, 0)
-            },
-        })
-
-        zone("recentsList", "#recentsList .channel", {
-            onEdge: function (dir) {
-                if (dir === "up") tv.set("recentsSearch", 0, 0)
-                else if (dir === "left") tv.set("rail", 0, 0)
-            },
-        })
-
-        zone("favsSearch", "#favsSearch", {
-            onEdge: function (dir) {
-                if (dir === "up") tv.set("rail", 0, 0)
-                else if (dir === "down") tv.set("favsList", 0, 0)
-            },
-        })
-
-        zone("favsList", "#favList .channel", {
-            onEdge: function (dir) {
-                if (dir === "up") tv.set("favsSearch", 0, 0)
-                else if (dir === "left") tv.set("rail", 0, 0)
-            },
-        })
-
-        zone("catActions", "#catActions .btn", {
-            onEdge: function (dir) {
-                if (dir === "down") tv.set("cats", 0, 0)
-                else if (dir === "right") tv.set("catSearch", 0, 0)
-                else if (dir === "left" || dir === "up") tv.set("rail", 0, 0)
-            },
-        })
-
-        zone("catSearch", "#catSearch", {
-            onEdge: function (dir) {
-                if (dir === "up") tv.set("catActions", 0, 0)
-                else if (dir === "left") tv.set("catActions", 0, 0)
-                else if (dir === "down") tv.set("cats", 0, 0)
-            },
-        })
-
-        zone("cats", "#catList .cat", {
-            onEdge: function (dir) {
-                if (dir === "up") tv.set("catSearch", 0, 0)
-                else if (dir === "left") tv.set("rail", 0, 0)
-            },
-        })
-
-        zone("addTypes", "#addTypes .typecard", {
-            onEdge: function (dir) {
-                if (dir === "left") tv.set("rail", 0, 0)
-            },
-        })
-
-        zone("fields", "#sourceForm input:not(.file), #sourceForm textarea, #sourceForm .pick", {
-            onEdge: function (dir) {
-                if (dir === "down") tv.set("formActions", 0, 0)
-                else if (dir === "left") tv.set("rail", 0, 0)
-            },
-        })
-
-        zone("formActions", "#sourceForm .btn", {
-            onEdge: function (dir) {
-                if (dir === "up") tv.set("fields", 9, 0)
             },
         })
 
@@ -315,9 +206,18 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
     }
 
     function back() {
+        if (store.state.globalSearchOpen) {
+            store.closeGlobalSearch()
+            return true
+        }
+        if (store.state.selectedMovie) {
+            store.closeMovieDetail()
+            return true
+        }
         if (store.state.screen === "pin") return true
         if (store.state.screen === "servers") {
-            store.goHome()
+            if (store.state.lists && store.state.lists.length) store.goHome()
+            else store.changeAccountPin()
             return true
         }
         if (store.state.screen === "episodes") {
@@ -341,13 +241,14 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
             store.exitPlayer()
             return true
         }
-        if (store.state.screen === "edit") {
-            store.goHome()
-            return true
-        }
         if (store.state.screen === "tv") {
             const focused = document.querySelector(".focused")
-            if (focused && (focused.closest("#tvChannels") || focused.closest("#previewCard") || focused.id === "playVodBtn" || focused.closest("#tvPreview"))) {
+            if (
+                focused &&
+                (focused.closest("#tvChannels") ||
+                    focused.closest("#zapPreviewActions") ||
+                    focused.closest("#tvPreview"))
+            ) {
                 const rows = store.tvCategories().rows
                 let catIdx = 0
                 if (rows && rows.length && store.state.catName) {
@@ -357,6 +258,8 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
                 tv.set("tvCats", catIdx, 0)
                 return true
             }
+            store.goHome()
+            return true
         }
         if (store.state.screen !== "home") {
             store.goHome()
