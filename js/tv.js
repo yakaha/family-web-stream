@@ -49,42 +49,68 @@ App.tv = (function () {
         } catch {}
     }
 
-    function toggleFullscreen() {
+    function isStandalonePwa() {
         try {
-            if (isFullscreen()) {
-                return exitFullscreen()
-            } else {
-                const el = document.documentElement
-                const rfs =
-                    el.requestFullscreen ||
-                    el.webkitRequestFullscreen ||
-                    el.msRequestFullscreen ||
-                    el.mozRequestFullScreen
-                if (rfs) return rfs.call(el)
-            }
-        } catch {}
+            return (
+                (window.matchMedia &&
+                    (window.matchMedia("(display-mode: fullscreen)").matches ||
+                        window.matchMedia("(display-mode: standalone)").matches ||
+                        window.matchMedia("(display-mode: minimal-ui)").matches)) ||
+                window.navigator.standalone === true
+            )
+        } catch {
+            return false
+        }
     }
 
-    App.isFullscreen = isFullscreen
-    App.exitFullscreen = exitFullscreen
-    App.toggleFullscreen = toggleFullscreen
-
-    function requestFullscreenOnce() {
-        if (hasRequestedFullscreen) return
-        hasRequestedFullscreen = true
+    function enterFullscreen() {
         try {
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-            // On mobile devices, let the user trigger fullscreen via player or dedicated button instead of auto-hijacking the first touch
-            if (isMobile) return
             const el = document.documentElement
             const rfs =
                 el.requestFullscreen ||
                 el.webkitRequestFullscreen ||
                 el.msRequestFullscreen ||
                 el.mozRequestFullScreen
-            if (rfs && !document.fullscreenElement && !document.webkitFullscreenElement) {
-                rfs.call(el).catch(() => {})
+            if (!rfs || isFullscreen()) return
+            // navigationUI "hide" asks Android to hide its system navigation bar too.
+            const result = rfs.call(el, { navigationUI: "hide" })
+            if (result && result.catch) result.catch(() => {})
+        } catch {}
+    }
+
+    let userLeftFullscreen = false
+
+    function toggleFullscreen() {
+        try {
+            if (isFullscreen()) {
+                userLeftFullscreen = true
+                return exitFullscreen()
             }
+            userLeftFullscreen = false
+            return enterFullscreen()
+        } catch {}
+    }
+
+    App.isFullscreen = isFullscreen
+    App.exitFullscreen = exitFullscreen
+    App.toggleFullscreen = toggleFullscreen
+    App.isStandalonePwa = isStandalonePwa
+
+    function requestFullscreenOnce() {
+        // Installed PWA: always go truly fullscreen (hide status + navigation bars)
+        // on the first touch, and again after the app comes back from background,
+        // unless the user chose "Réduire" himself.
+        if (isStandalonePwa()) {
+            if (!isFullscreen() && !userLeftFullscreen) enterFullscreen()
+            return
+        }
+        if (hasRequestedFullscreen) return
+        hasRequestedFullscreen = true
+        try {
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+            // In a mobile browser tab, let the user trigger fullscreen via the dedicated button
+            if (isMobile) return
+            enterFullscreen()
         } catch {}
     }
 

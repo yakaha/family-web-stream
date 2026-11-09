@@ -2062,3 +2062,870 @@
         flex-wrap: wrap;
     }
 }
+
+
+
+/* ==========================================================================
+   v2 — FULLSCREEN PWA + COMPACT NAVIGATION BARS (Phones / Tablets / TV)
+   ========================================================================== */
+
+html,
+body {
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Real viewport height everywhere (fixes the bar hidden under the phone UI) */
+.app.fs-android-app,
+.main.fs-full-main {
+    height: 100%;
+    height: 100dvh;
+    min-height: -webkit-fill-available;
+}
+
+/* Safe areas (notch / rounded corners / gesture bar) in fullscreen PWA */
+.fs-home-screen {
+    padding-top: max(20px, env(safe-area-inset-top));
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    padding-left: max(32px, env(safe-area-inset-left));
+    padding-right: max(32px, env(safe-area-inset-right));
+}
+
+.fs-zap-topbar {
+    padding-top: env(safe-area-inset-top);
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+    height: calc(52px + env(safe-area-inset-top));
+    min-height: calc(52px + env(safe-area-inset-top));
+}
+
+.fs-zap-body,
+.fs-vod-body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+}
+
+.fs-vod-bottom-bar {
+    padding-bottom: env(safe-area-inset-bottom);
+    height: calc(32px + env(safe-area-inset-bottom));
+}
+
+.fs-zap-col-chans,
+.fs-zap-col-preview {
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+/* Hide scrollbars of horizontal pill rows */
+.fs-home-top-actions,
+.fs-seasons-row,
+.ov-live-actions,
+.vod-actions {
+    scrollbar-width: none;
+}
+.fs-home-top-actions::-webkit-scrollbar,
+.fs-seasons-row::-webkit-scrollbar,
+.ov-live-actions::-webkit-scrollbar,
+.vod-actions::-webkit-scrollbar {
+    display: none;
+}
+
+/* ---------- PLAYER: compact top bar & bottom bar (all sizes) ---------- */
+.fs-android-app .player-top-bar {
+    padding: max(10px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 10px
+        max(16px, env(safe-area-inset-left));
+}
+
+.fs-android-app .player-btn-back,
+.fs-android-app .player-btn-fs {
+    min-height: 38px;
+    padding: 6px 14px;
+    font-size: 13px;
+}
+
+.fs-android-app .overlay {
+    gap: 10px;
+    padding: 18px max(4%, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom))
+        max(4%, env(safe-area-inset-left));
+    background: linear-gradient(0deg, rgba(5, 2, 14, 0.94), rgba(5, 2, 14, 0.6) 70%, transparent);
+}
+
+.fs-android-app .overlay h1 {
+    font-size: clamp(20px, 2.4vw, 38px);
+}
+
+.fs-android-app .ov-live {
+    margin-bottom: 4px;
+    font-size: 12px;
+}
+
+.fs-android-app .ov-group,
+.fs-android-app .ov-next {
+    font-size: 14px;
+    margin-top: 4px;
+}
+
+.fs-android-app .ov-program {
+    font-size: 16px;
+    margin-top: 6px;
+}
+
+.fs-android-app .ov-guide {
+    margin-top: 6px;
+}
+
+.fs-android-app .ov-live-actions {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    max-width: 100%;
+    gap: 8px;
+    padding: 2px;
+}
+
+.fs-android-app .ov-live-actions .btn {
+    flex: 0 0 auto;
+    min-height: 40px;
+    height: 40px;
+    padding: 0 14px;
+    font-size: 13px;
+    white-space: nowrap;
+    border-radius: 10px;
+}
+
+.fs-android-app .vod-controls {
+    padding: 12px 18px 14px;
+    border-radius: 16px;
+    background: rgba(13, 8, 28, 0.9);
+    border-color: rgba(154, 107, 255, 0.28);
+}
+
+.fs-android-app .vod-controls-heading {
+    margin-bottom: 4px;
+}
+
+.fs-android-app .vod-timeline {
+    gap: 10px;
+    grid-template-columns: 52px minmax(80px, 1fr) 52px;
+}
+
+.fs-android-app .vod-time {
+    font-size: 13px;
+    min-width: 0;
+}
+
+.fs-android-app .vod-actions {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+    gap: 8px;
+    margin-top: 8px;
+    padding: 2px;
+}
+
+.fs-android-app .vod-actions .vod-action,
+.fs-android-app .vod-actions .vod-play,
+.fs-android-app .track-indicator {
+    flex: 0 0 auto;
+    min-width: 0;
+    min-height: 44px;
+    height: 44px;
+    padding: 0 14px;
+    gap: 8px;
+    font-size: 13px;
+    border-radius: 11px;
+    order: 0;
+}
+
+.fs-android-app .vod-actions .vod-play {
+    min-width: 110px;
+    background: linear-gradient(135deg, #9a6bff 0%, #6a2cd8 100%);
+    color: #fff;
+}
+
+.fs-android-app .vod-actions .vod-play .vod-action-icon {
+    color: #fff;
+}
+
+.fs-android-app .vod-action-icon {
+    font-size: 17px;
+    min-width: 18px;
+    color: #c4b5fd;
+}
+
+.fs-android-app .vod-track-copy small {
+    font-size: 9px;
+}
+
+.fs-android-app .vod-track-copy strong {
+    font-size: 12px;
+}
+
+.fs-android-app .player-status {
+    top: calc(64px + env(safe-area-inset-top));
+    padding: 8px 14px;
+}
+
+.fs-android-app .player-status-text {
+    font-size: 14px;
+}
+
+/* ---------- PHONES PORTRAIT (<= 768px) ---------- */
+@media (max-width: 768px) {
+    /* Home: one-line compact top bar with icon-only pills */
+    .fs-home-screen {
+        padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+            max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+        justify-content: flex-start;
+        gap: 10px;
+    }
+
+    .fs-home-topbar {
+        flex-wrap: wrap;
+        gap: 8px;
+        min-height: 0;
+    }
+
+    .fs-home-brand .fs-brand-icon {
+        width: 30px;
+        height: 30px;
+    }
+
+    .fs-home-brand .fs-brand-title {
+        font-size: 16px;
+    }
+
+    .fs-clock-time {
+        font-size: 16px;
+    }
+
+    .fs-clock-date {
+        font-size: 10px;
+    }
+
+    .fs-home-top-actions {
+        order: 3;
+        width: 100%;
+        flex-wrap: nowrap;
+        justify-content: space-between;
+        overflow-x: auto;
+        gap: 6px;
+        padding: 0;
+    }
+
+    .fs-top-pill {
+        flex: 1 0 auto;
+        justify-content: center;
+        height: 34px;
+        min-width: 40px;
+        padding: 0 8px;
+        font-size: 15px;
+    }
+
+    .fs-top-pill span {
+        display: none;
+    }
+
+    .fs-home-cards-row {
+        margin: 4px 0;
+        gap: 10px;
+        flex: 1 0 auto;
+        min-height: 0;
+    }
+
+    .fs-premium-card {
+        min-height: 128px;
+        border-radius: 18px;
+    }
+
+    .fs-card-content {
+        padding: 14px 16px;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 14px;
+    }
+
+    .fs-card-top-row {
+        width: auto;
+    }
+
+    .fs-card-icon-badge {
+        width: 46px;
+        height: 46px;
+        border-radius: 13px;
+    }
+
+    .fs-card-icon-badge svg {
+        width: 30px;
+        height: 30px;
+    }
+
+    .fs-card-count-pill {
+        display: none;
+    }
+
+    .fs-card-spacer {
+        display: none;
+    }
+
+    .fs-card-title {
+        font-size: 19px;
+        flex: 1;
+    }
+
+    .fs-card-subtitle {
+        width: 100%;
+        margin: 0;
+        font-size: 12px;
+    }
+
+    .fs-card-divider {
+        display: none;
+    }
+
+    .fs-card-footer {
+        width: 100%;
+    }
+
+    .fs-home-bottom {
+        gap: 6px;
+    }
+
+    .fs-status-chip {
+        height: 32px;
+        font-size: 11px;
+        padding: 0 12px;
+    }
+
+    .fs-status-chip.fs-chip-right {
+        display: none;
+    }
+
+    /* Live TV / VOD top bar: single compact line (back + title + sort), search under it */
+    .fs-zap-topbar {
+        flex-wrap: wrap;
+        height: auto;
+        min-height: 0;
+        padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 8px
+            max(10px, env(safe-area-inset-left));
+        gap: 8px;
+    }
+
+    .fs-round-back {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+    }
+
+    .fs-zap-title {
+        font-size: 16px;
+        flex: 1;
+    }
+
+    .fs-vod-sort-btn {
+        height: 32px;
+        padding: 0 10px;
+        font-size: 11px;
+    }
+
+    .fs-zap-search-wrap {
+        order: 3;
+        width: 100%;
+        flex: none;
+        height: 34px;
+    }
+
+    /* Categories become a horizontal chip strip — the list gets the whole screen */
+    .fs-zap-body,
+    .fs-vod-body {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .fs-zap-col-cats,
+    .fs-vod-col-genres {
+        max-height: none;
+        flex: 0 0 auto;
+        padding: 6px 8px;
+    }
+
+    .fs-zap-col-cats .fs-zap-filter-box,
+    .fs-vod-col-genres .fs-zap-filter-box {
+        display: none;
+    }
+
+    .fs-zap-col-cats .fs-zap-list,
+    .fs-vod-col-genres .fs-zap-list {
+        flex-direction: row;
+        overflow-x: auto;
+        overflow-y: hidden;
+        gap: 6px;
+        scrollbar-width: none;
+    }
+
+    .fs-zap-col-cats .fs-zap-list::-webkit-scrollbar,
+    .fs-vod-col-genres .fs-zap-list::-webkit-scrollbar {
+        display: none;
+    }
+
+    .fs-zap-col-cats .fs-zap-cat-item,
+    .fs-vod-col-genres .fs-zap-cat-item {
+        min-height: 34px;
+        height: 34px;
+        max-width: 190px;
+        padding: 0 12px;
+        border-radius: 999px;
+        flex: 0 0 auto;
+    }
+
+    .fs-zap-cat-arrow {
+        display: none;
+    }
+
+    .fs-zap-cat-name {
+        font-size: 12px;
+    }
+
+    .fs-zap-col-chans,
+    .fs-vod-col-grid {
+        flex: 1 1 0;
+        min-height: 0;
+    }
+
+    .fs-zap-chan-item {
+        height: 50px;
+        min-height: 50px;
+    }
+
+    .fs-vod-cat-bar {
+        height: 34px;
+        min-height: 34px;
+        padding: 0 12px;
+    }
+
+    .fs-vod-grid-scroll {
+        padding: 10px 10px max(10px, env(safe-area-inset-bottom));
+    }
+
+    .fs-vod-grid {
+        grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+        gap: 8px;
+    }
+
+    .fs-vod-title {
+        font-size: 12px;
+    }
+
+    /* Detail pages */
+    .fs-media-info-content,
+    .fs-series-content {
+        padding: max(10px, env(safe-area-inset-top)) 14px max(16px, env(safe-area-inset-bottom));
+        gap: 14px;
+    }
+
+    .fs-media-info-topbar .fs-brand-header,
+    .fs-series-topbar .fs-brand-header {
+        display: none;
+    }
+
+    .fs-media-title,
+    .fs-series-title {
+        font-size: 20px;
+    }
+
+    .fs-series-poster-card {
+        width: 130px;
+        height: 185px;
+    }
+
+    .fs-series-title-row {
+        flex-direction: column;
+    }
+
+    .fs-meta-label {
+        width: auto;
+    }
+
+    .fs-episodes-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* Player: tiny top bar, compact bottom bar that leaves the picture visible */
+    .fs-android-app .player-top-bar {
+        padding: max(8px, env(safe-area-inset-top)) 10px 8px;
+    }
+
+    .fs-android-app .player-btn-back,
+    .fs-android-app .player-btn-fs {
+        min-height: 34px;
+        padding: 4px 12px;
+        font-size: 12px;
+    }
+
+    .fs-android-app .overlay {
+        padding: 12px 10px max(10px, env(safe-area-inset-bottom));
+        gap: 8px;
+    }
+
+    .fs-android-app .ov-info {
+        text-align: left;
+    }
+
+    .fs-android-app .ov-live {
+        justify-content: flex-start;
+    }
+
+    .fs-android-app .overlay h1 {
+        font-size: 17px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .fs-android-app .ov-group,
+    .fs-android-app .ov-next,
+    .fs-android-app .ov-engine {
+        display: none;
+    }
+
+    .fs-android-app .ov-live-actions {
+        flex-direction: row;
+        width: 100%;
+    }
+
+    .fs-android-app .ov-live-actions .btn {
+        width: auto;
+        min-height: 38px;
+        height: 38px;
+        padding: 0 12px;
+        font-size: 12px;
+    }
+
+    .fs-android-app .vod-controls {
+        padding: 10px 10px 10px;
+    }
+
+    .fs-android-app .vod-controls-heading {
+        display: none;
+    }
+
+    .fs-android-app .vod-actions .vod-action,
+    .fs-android-app .vod-actions .vod-play,
+    .fs-android-app .track-indicator {
+        height: 40px;
+        min-height: 40px;
+        padding: 0 11px;
+        font-size: 12px;
+    }
+
+    .fs-android-app .vod-actions .vod-play {
+        min-width: 90px;
+    }
+
+    .fs-android-app .track-indicator.unavailable {
+        display: none;
+    }
+
+    .fs-stats-hud {
+        top: calc(56px + env(safe-area-inset-top));
+        left: 10px;
+        font-size: 10px;
+        padding: 8px 10px;
+    }
+}
+
+/* ---------- PHONES LANDSCAPE / SHORT SCREENS (height <= 520px) ---------- */
+@media (max-height: 520px) and (orientation: landscape) {
+    .fs-home-screen {
+        padding: max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+            max(8px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+        gap: 6px;
+    }
+
+    .fs-home-topbar {
+        flex-wrap: nowrap;
+        min-height: 40px;
+    }
+
+    .fs-home-top-actions {
+        order: 0;
+        width: auto;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        gap: 6px;
+    }
+
+    .fs-top-pill {
+        height: 32px;
+        padding: 0 10px;
+        flex: 0 0 auto;
+    }
+
+    .fs-top-pill span {
+        display: none;
+    }
+
+    .fs-home-brand .fs-brand-title {
+        font-size: 15px;
+    }
+
+    .fs-home-brand .fs-brand-icon {
+        width: 28px;
+        height: 28px;
+    }
+
+    .fs-home-cards-row {
+        grid-template-columns: repeat(3, 1fr);
+        margin: 6px 0;
+        gap: 10px;
+        min-height: 0;
+        max-height: none;
+    }
+
+    .fs-premium-card {
+        min-height: 0;
+        border-radius: 16px;
+    }
+
+    .fs-card-content {
+        padding: 12px 14px;
+        flex-direction: column;
+        flex-wrap: nowrap;
+        align-items: stretch;
+    }
+
+    .fs-card-icon-badge {
+        width: 40px;
+        height: 40px;
+    }
+
+    .fs-card-icon-badge svg {
+        width: 26px;
+        height: 26px;
+    }
+
+    .fs-card-spacer {
+        display: block;
+        min-height: 4px;
+    }
+
+    .fs-card-title {
+        font-size: 17px;
+        flex: none;
+    }
+
+    .fs-card-subtitle {
+        font-size: 11px;
+    }
+
+    .fs-card-divider {
+        display: block;
+        margin: 6px 0;
+    }
+
+    .fs-home-bottom {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+    }
+
+    .fs-status-chip {
+        height: 28px;
+        font-size: 10px;
+    }
+
+    .fs-status-chip.fs-chip-right {
+        display: flex;
+    }
+
+    /* Live TV / VOD: one 44px top bar, search inline */
+    .fs-zap-topbar {
+        flex-wrap: nowrap;
+        height: calc(44px + env(safe-area-inset-top));
+        min-height: calc(44px + env(safe-area-inset-top));
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: 0;
+    }
+
+    .fs-zap-search-wrap {
+        order: 0;
+        width: auto;
+        flex: 1;
+        height: 32px;
+    }
+
+    .fs-zap-title {
+        flex: none;
+        font-size: 15px;
+    }
+
+    .fs-zap-body {
+        display: grid;
+        flex-direction: unset;
+        grid-template-columns: 30% 38% 32%;
+    }
+
+    .fs-vod-body {
+        display: grid;
+        flex-direction: unset;
+        grid-template-columns: 26% 74%;
+    }
+
+    .fs-zap-col-cats .fs-zap-list,
+    .fs-vod-col-genres .fs-zap-list {
+        flex-direction: column;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
+    .fs-zap-col-cats .fs-zap-cat-item,
+    .fs-vod-col-genres .fs-zap-cat-item {
+        border-radius: 8px;
+        max-width: none;
+        flex: 0 0 auto;
+    }
+
+    .fs-zap-col-cats .fs-zap-filter-box,
+    .fs-vod-col-genres .fs-zap-filter-box {
+        display: none;
+    }
+
+    .fs-zap-col-preview {
+        display: flex;
+        padding: 8px;
+    }
+
+    .fs-zap-info-block {
+        padding: 6px 2px;
+    }
+
+    .fs-zap-preview-title {
+        font-size: 14px;
+    }
+
+    .fs-zap-preview-epg {
+        font-size: 11px;
+    }
+
+    .fs-zap-actions-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .fs-zap-action-btn {
+        height: 30px;
+        font-size: 10px;
+    }
+
+    .fs-zap-chan-item,
+    .fs-zap-cat-item {
+        height: 40px;
+        min-height: 40px;
+    }
+
+    .fs-vod-bottom-bar {
+        display: none;
+    }
+
+    /* Player: minimal bars so the video stays visible */
+    .fs-android-app .player-top-bar {
+        padding: max(6px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 6px
+            max(12px, env(safe-area-inset-left));
+    }
+
+    .fs-android-app .player-btn-back,
+    .fs-android-app .player-btn-fs {
+        min-height: 32px;
+        padding: 4px 12px;
+        font-size: 12px;
+    }
+
+    .fs-android-app .overlay {
+        padding: 8px max(12px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom))
+            max(12px, env(safe-area-inset-left));
+        gap: 6px;
+    }
+
+    .fs-android-app .ov-info {
+        text-align: left;
+    }
+
+    .fs-android-app .ov-live {
+        justify-content: flex-start;
+    }
+
+    .fs-android-app .overlay h1 {
+        font-size: 16px;
+    }
+
+    .fs-android-app .ov-group,
+    .fs-android-app .ov-next,
+    .fs-android-app .ov-guide,
+    .fs-android-app .ov-keys {
+        display: none;
+    }
+
+    .fs-android-app .vod-controls {
+        padding: 8px 12px;
+    }
+
+    .fs-android-app .vod-controls-heading {
+        display: none;
+    }
+
+    .fs-android-app .vod-actions {
+        margin-top: 4px;
+    }
+
+    .fs-android-app .vod-actions .vod-action,
+    .fs-android-app .vod-actions .vod-play,
+    .fs-android-app .track-indicator,
+    .fs-android-app .ov-live-actions .btn {
+        height: 36px;
+        min-height: 36px;
+        padding: 0 10px;
+        font-size: 12px;
+    }
+
+    .fs-android-app .track-indicator.unavailable {
+        display: none;
+    }
+
+    .fs-media-info-body,
+    .fs-series-hero {
+        flex-direction: row;
+        text-align: left;
+        align-items: flex-start;
+    }
+
+    .fs-media-poster-card {
+        width: 130px;
+        height: 190px;
+    }
+
+    .fs-series-poster-card {
+        width: 110px;
+        height: 160px;
+    }
+
+    .fs-media-info-content,
+    .fs-series-content {
+        padding: max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+            max(10px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+        gap: 10px;
+    }
+
+    .fs-pin-screen {
+        align-items: flex-start;
+        padding: max(8px, env(safe-area-inset-top)) 12px 8px;
+    }
+
+    .fs-pin-layout {
+        grid-template-columns: 46% 54%;
+        max-width: none;
+        padding: 14px 18px;
+        gap: 16px;
+    }
+
+    .fs-key-btn {
+        height: 36px;
+    }
+}

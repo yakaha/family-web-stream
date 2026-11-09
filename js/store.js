@@ -2429,7 +2429,9 @@ App.store = (function () {
     }
 
     function exitPlayer() {
-        if (typeof App !== "undefined" && App.exitFullscreen) {
+        // Keep the installed PWA in true fullscreen when leaving the player.
+        const isPwa = typeof App !== "undefined" && App.isStandalonePwa && App.isStandalonePwa()
+        if (!isPwa && typeof App !== "undefined" && App.exitFullscreen) {
             App.exitFullscreen()
         }
         if (zapDebounceTimer) {

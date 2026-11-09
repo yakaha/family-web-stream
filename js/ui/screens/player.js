@@ -56,7 +56,6 @@ App.uiScreens = App.uiScreens || {}
 
         function handleExit(e) {
             if (e && e.stopPropagation) e.stopPropagation()
-            if (App.exitFullscreen) App.exitFullscreen()
             store.exitPlayer()
         }
 
