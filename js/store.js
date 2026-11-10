@@ -316,6 +316,12 @@ App.store = (function () {
         const str = (typeof name === "string" ? name : name.name || "").trim().toLowerCase()
         if (!str) return 3
 
+        // Priority -2: Pinned beIN SPORTS
+        if (str === "⚽ bein sports" || str === "bein sports" || str === "__bein__" || str.includes("bein sport")) return -2
+
+        // Priority -1: Special Favorites / Recents
+        if (str.startsWith("⭐") || str.startsWith("🕒") || str.includes("favori") || str.includes("recent") || str.includes("récent")) return -1
+
         // Priority 0: French categories (FR, France, French, Français, Francais, VF, VOSTFR)
         const isFrench =
             /^((\||\b|\[|\()?\s*fr\b|\bfrance\b|\bfrench\b|\bfrancais\b|\bfrançais\b|\bvf\b|\bvostfr\b)/i.test(str) ||
@@ -339,6 +345,128 @@ App.store = (function () {
         const p2 = categoryPriority(n2)
         if (p1 !== p2) return p1 - p2
         return n1.localeCompare(n2, "fr", { sensitivity: "base", numeric: true })
+    }
+
+    function normalizeChannelName(raw) {
+        return String(raw || "")
+            .toLowerCase()
+            .replace(/\b(fhd|uhd|hd|sd|hevc|4k|raw|1080p|720p|50fps|h265|fr|fra|france|ar|ara|arab|arabic)\b/g, "")
+            .replace(/[^a-z0-9]/g, "")
+            .trim()
+    }
+
+    function isBeinChannel(channel) {
+        if (!channel) return false
+        const name = String(channel.name || "").toLowerCase()
+        const group = String(channel.group || "").toLowerCase()
+        const genre = String(channel.genre || "").toLowerCase()
+        return (
+            /(?:^|[\s\[\]()_:\-\|\/])bein(?:$|[\s\[\]()_:\-\|\/])/i.test(name) ||
+            name.includes("bein sport") ||
+            name.includes("bein_sport") ||
+            name.includes("beinsport") ||
+            group.includes("bein") ||
+            genre.includes("bein")
+        )
+    }
+
+    function channelLanguagePriority(channel) {
+        const name = String(channel.name || "").toLowerCase()
+        const group = String(channel.group || "").toLowerCase()
+        const text = `${name} ${group}`
+
+        const isFrench =
+            /(?:^|[\s\[\]()_:\-\|\/])(?:fr|france|french|francais|français|max)(?:$|[\s\[\]()_:\-\|\/])/i.test(text) ||
+            (/bein sports \d/.test(text) && !text.includes("(ar)") && !text.includes("[ar]"))
+        const isArabic =
+            /[\u0600-\u06ff]/.test(text) ||
+            /(?:^|[\s\[\]()_:\-\|\/])(?:ar|arabe|arabic|nilesat|mena|qatar)(?:$|[\s\[\]()_:\-\|\/])/i.test(text) ||
+            text.includes("(ar)") || text.includes("[ar]")
+
+        if (isFrench && !isArabic) return 0
+        if (isArabic) return 1
+        return 2
+    }
+
+    function naturalSort(a, b) {
+        return String(a || "").localeCompare(String(b || ""), "fr", { numeric: true, sensitivity: "base" })
+    }
+
+    const PERMANENT_BEIN_CONFIGS = [
+        // French beIN bouquet
+        { id: "perm_bein_fr_1", name: "beIN SPORTS 1 HD", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
+        { id: "perm_bein_fr_2", name: "beIN SPORTS 2 HD", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
+        { id: "perm_bein_fr_3", name: "beIN SPORTS 3 HD", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
+        { id: "perm_bein_fr_max4", name: "beIN SPORTS MAX 4", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
+        { id: "perm_bein_fr_max5", name: "beIN SPORTS MAX 5", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
+        { id: "perm_bein_fr_max6", name: "beIN SPORTS MAX 6", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
+        { id: "perm_bein_fr_max7", name: "beIN SPORTS MAX 7", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
+        { id: "perm_bein_fr_max8", name: "beIN SPORTS MAX 8", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
+        { id: "perm_bein_fr_max9", name: "beIN SPORTS MAX 9", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
+        { id: "perm_bein_fr_max10", name: "beIN SPORTS MAX 10", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
+        // Arabic beIN bouquet
+        { id: "perm_bein_ar_1", name: "beIN SPORTS 1 HD (AR)", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "perm_bein_ar_2", name: "beIN SPORTS 2 HD (AR)", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "perm_bein_ar_3", name: "beIN SPORTS 3 HD (AR)", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "perm_bein_ar_4", name: "beIN SPORTS 4 HD (AR)", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "perm_bein_ar_5", name: "beIN SPORTS 5 HD (AR)", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "perm_bein_ar_6", name: "beIN SPORTS 6 HD (AR)", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "perm_bein_ar_7", name: "beIN SPORTS 7 HD (AR)", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "perm_bein_ar_8", name: "beIN SPORTS 8 HD (AR)", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "perm_bein_ar_9", name: "beIN SPORTS 9 HD (AR)", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "perm_bein_ar_news", name: "beIN SPORTS NEWS (AR)", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "perm_bein_ar_xtra1", name: "beIN SPORTS XTRA 1 (AR)", url: "https://bein-xtra-bein.amagi.tv/playlist.m3u8", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "perm_bein_ar_xtra2", name: "beIN SPORTS XTRA 2 (AR)", url: "https://d9ssxzmclhfo4.cloudfront.net/bein_sports.m3u8", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+    ]
+
+    function getPermanentBeinChannels(listId) {
+        return PERMANENT_BEIN_CONFIGS.map((cfg) =>
+            Object.assign({}, cfg, {
+                listId: listId || (state.lists[0] && state.lists[0].id) || "",
+                mediaType: "live",
+                isPermanent: true,
+            })
+        )
+    }
+
+    function getBeinChannelsList(scope) {
+        const activeId = scope || state.tvSource || (state.lists[0] && state.lists[0].id)
+        const serverChans = allChannels().filter((channel) => {
+            if (activeId && channel.listId !== activeId) return false
+            if (!matchesMedia(channel, "live")) return false
+            return isBeinChannel(channel)
+        })
+
+        const permChans = getPermanentBeinChannels(activeId)
+        const merged = []
+        const seenNorm = Object.create(null)
+
+        // 1. Add all server beIN channels
+        serverChans.forEach((ch) => {
+            const norm = normalizeChannelName(ch.name)
+            if (norm) seenNorm[norm] = true
+            merged.push(ch)
+        })
+
+        // 2. Add permanent channels that are not already matched on server
+        permChans.forEach((perm) => {
+            const norm = normalizeChannelName(perm.name)
+            if (!norm || !seenNorm[norm]) {
+                const matchedServer = serverChans.find((sc) => normalizeChannelName(sc.name) === norm)
+                if (!matchedServer) {
+                    merged.push(perm)
+                }
+            }
+        })
+
+        merged.sort((a, b) => {
+            const pA = channelLanguagePriority(a)
+            const pB = channelLanguagePriority(b)
+            if (pA !== pB) return pA - pB
+            return naturalSort(a.name, b.name)
+        })
+
+        return merged
     }
 
     function sources() {
@@ -858,6 +986,70 @@ App.store = (function () {
         if (categoryName === "⭐ Favoris" || categoryName === "🕒 Récents") {
             return Promise.resolve([])
         }
+
+        if (categoryName === "⚽ beIN SPORTS" || categoryName === "beIN SPORTS" || categoryName === "__bein__") {
+            const list = state.tvSource ? listById(state.tvSource) : state.lists[0]
+            if (!list) return Promise.resolve(getBeinChannelsList())
+            const listCats = state.categories[list.id] && state.categories[list.id].live
+            if (!listCats || !listCats.length) return Promise.resolve(getBeinChannelsList(list.id))
+
+            const beinCats = listCats.filter((c) => /bein/i.test(c.name))
+            if (!beinCats.length) return Promise.resolve(getBeinChannelsList(list.id))
+
+            state.loadedCategories[list.id] = state.loadedCategories[list.id] || {}
+            const unloaded = beinCats.filter((cat) => !state.loadedCategories[list.id][`live:${cat.id}`])
+            if (!unloaded.length) {
+                return Promise.resolve(getBeinChannelsList(list.id))
+            }
+
+            state.categoryLoading = categoryName
+            emit()
+
+            function appendBeinLoaded(newItems) {
+                if (!newItems || !newItems.length) return
+                const current = state.channels[list.id] || []
+                const combined = current.slice()
+                const seen = Object.create(null)
+                combined.forEach((c) => {
+                    seen[`${c.mediaType || "live"}|${c.streamId || c.url || c.cmd || c.name}`] = true
+                })
+                let addedCount = 0
+                newItems.forEach((item) => {
+                    const key = `${item.mediaType || "live"}|${item.streamId || item.url || item.cmd || item.name}`
+                    if (!seen[key]) {
+                        seen[key] = true
+                        combined.push(Object.assign({ listId: list.id }, item))
+                        addedCount++
+                    }
+                })
+                if (addedCount > 0) {
+                    state.channels[list.id] = combined
+                    invalidate()
+                    if (state.screen === "tv") emit()
+                }
+            }
+
+            const tasks = unloaded.map((cObj) => {
+                const cKey = `live:${cObj.id}`
+                return App.api
+                    .loadCategoryChannels(list, cObj.id, "live", cObj.name)
+                    .then((items) => {
+                        state.loadedCategories[list.id][cKey] = true
+                        appendBeinLoaded(items)
+                        return items
+                    })
+                    .catch((err) => {
+                        console.warn("Could not load beIN category:", cObj.name, err)
+                        return []
+                    })
+            })
+
+            return Promise.all(tasks).finally(() => {
+                state.categoryLoading = false
+                emit()
+            })
+        }
+
         const list = state.tvSource ? listById(state.tvSource) : state.lists[0]
         if (!list) return Promise.resolve([])
         const listCats = state.categories[list.id] && state.categories[list.id][state.mediaType]
@@ -1633,7 +1825,7 @@ App.store = (function () {
                         write(KEYS.lists, state.lists)
                         write("ts.categories", state.categories)
 
-                        const firstCat = categories && categories.length ? categories[0].name : ""
+                        const firstCat = "⚽ beIN SPORTS"
                         state.mediaType = "live"
                         state.catName = firstCat
                         state.tvSource = draft.id
@@ -1642,9 +1834,7 @@ App.store = (function () {
                         notify(`Serveur actif : ${server.name}`)
                         emit()
 
-                        if (firstCat) {
-                            ensureCategoryLoaded(firstCat)
-                        }
+                        ensureCategoryLoaded(firstCat)
                         focus("homeCards", 0, 0)
                         preloadCatalog(draft.id)
                         return categories
@@ -1743,15 +1933,11 @@ App.store = (function () {
             if (isRemote) {
                 ensureCategories(list.id, "live").then(() => {
                     const rows = tvCategories().rows
-                    const regularRows = rows.filter((r) => !r.special)
-                    const fallback = (regularRows[0] && regularRows[0].name) || (rows[0] && rows[0].name) || ""
-                    if (fallback) {
-                        const target =
-                            !state.catName || !rows.some((r) => r.name === state.catName)
-                                ? fallback
-                                : state.catName
-                        openTvCategory(target)
-                    }
+                    const target =
+                        state.catName && rows.some((r) => r.name === state.catName)
+                            ? state.catName
+                            : "⚽ beIN SPORTS"
+                    openTvCategory(target)
                 })
                 return
             }
@@ -1761,15 +1947,11 @@ App.store = (function () {
             const chooseCategory = () => {
                 if (state.screen !== "tv" || state.mediaType !== "live") return
                 const rows = tvCategories().rows
-                const regularRows = rows.filter((r) => !r.special)
-                const fallback = (regularRows[0] && regularRows[0].name) || (rows[0] && rows[0].name) || ""
-                if (fallback) {
-                    const target =
-                        !state.catName || !rows.some((r) => r.name === state.catName)
-                            ? fallback
-                            : state.catName
-                    openTvCategory(target)
-                }
+                const target =
+                    state.catName && rows.some((r) => r.name === state.catName)
+                        ? state.catName
+                        : "⚽ beIN SPORTS"
+                openTvCategory(target)
                 emit()
             }
             if (todo.length) {
@@ -1905,6 +2087,33 @@ App.store = (function () {
             return
         }
         set({ preview: channel, previewRequested: false })
+        if (channel.isPermanent && !channel.url && !channel.cmd) {
+            const list = listById(channel.listId) || state.lists[0]
+            const norm = normalizeChannelName(channel.name)
+            const matched = allChannels().find(
+                (c) =>
+                    matchesMedia(c, "live") &&
+                    isBeinChannel(c) &&
+                    normalizeChannelName(c.name) === norm &&
+                    (c.url || c.cmd),
+            )
+            if (matched) {
+                const merged = Object.assign({}, channel, matched, { isPermanent: false })
+                set({ preview: merged })
+                if (merged.url) return
+                if (listKind(list) === "stalker" && merged.cmd) {
+                    App.api
+                        .resolveStalkerUrl(list, merged)
+                        .then((url) => {
+                            if (state.preview !== merged) return
+                            const resolved = Object.assign({}, merged, { url })
+                            set({ preview: resolved })
+                        })
+                        .catch(() => {})
+                }
+                return
+            }
+        }
         if (channel.url) return
         const list = listById(channel.listId) || state.lists[0]
         if (!list || listKind(list) !== "stalker" || !channel.cmd) return
@@ -2135,6 +2344,20 @@ App.store = (function () {
     function play(channel, listId, list) {
         const request = ++playbackRequest
         if (!listId && channel.listId) listId = channel.listId
+        if (channel.isPermanent && !channel.url && !channel.cmd) {
+            const norm = normalizeChannelName(channel.name)
+            const matched = allChannels().find(
+                (c) =>
+                    matchesMedia(c, "live") &&
+                    isBeinChannel(c) &&
+                    normalizeChannelName(c.name) === norm &&
+                    (c.url || c.cmd),
+            )
+            if (matched) {
+                channel = Object.assign({}, channel, matched, { isPermanent: false })
+                if (matched.listId) listId = matched.listId
+            }
+        }
         const list_ = listById(listId)
         const origin =
             state.screen === "player" && state.playing
@@ -2294,14 +2517,28 @@ App.store = (function () {
             activeList && state.categories[activeList.id] && state.categories[activeList.id].live
         const playing =
             state.playing && state.playing.channel ? state.playing.channel.group || "Otros" : ""
+        const isPlayingBein = isBeinChannel(state.playing && state.playing.channel)
+
+        const beinList = getBeinChannelsList(activeList ? activeList.id : null)
+        const beinRow = {
+            name: "⚽ beIN SPORTS",
+            count: beinList.length,
+            selected: state.zapCategory === "⚽ beIN SPORTS",
+            playing: isPlayingBein,
+        }
 
         if (listCats && listCats.length) {
-            return listCats.map((cat) => ({
+            const sorted = listCats
+                .slice()
+                .filter((cat) => cat.name !== "⚽ beIN SPORTS")
+                .sort((a, b) => compareCategories(a.name, b.name))
+            const rows = sorted.map((cat) => ({
                 name: cat.name,
                 count: cat.count || 0,
                 selected: cat.name === state.zapCategory,
-                playing: cat.name === playing,
+                playing: !isPlayingBein && cat.name === playing,
             }))
+            return [beinRow].concat(rows)
         }
 
         const count = {}
@@ -2309,21 +2546,28 @@ App.store = (function () {
             .filter((channel) => matchesMedia(channel, "live"))
             .forEach((channel) => {
                 const group = channel.group || "Otros"
-                count[group] = (count[group] || 0) + 1
+                if (group !== "⚽ beIN SPORTS") {
+                    count[group] = (count[group] || 0) + 1
+                }
             })
-        return Object.keys(count)
+        const rows = Object.keys(count)
             .sort(compareCategories)
             .map((name) => {
                 return {
                     name,
                     count: count[name],
                     selected: name === state.zapCategory,
-                    playing: name === playing,
+                    playing: !isPlayingBein && name === playing,
                 }
             })
+        return [beinRow].concat(rows)
     }
 
     function zapChannels() {
+        if (state.zapCategory === "⚽ beIN SPORTS" || state.zapCategory === "__bein__") {
+            const activeId = state.playing && state.playing.listId ? state.playing.listId : state.tvSource
+            return getBeinChannelsList(activeId)
+        }
         return allChannels().filter((channel) => {
             if (!matchesMedia(channel, "live")) return false
             return (channel.group || "Otros") === state.zapCategory
@@ -2562,6 +2806,18 @@ App.store = (function () {
             { name: "🕒 Récents", id: "__recents__", special: "recents", count: recCount, sources: 1 },
         ]
 
+        if (mediaType === "live") {
+            const beinList = getBeinChannelsList(activeList ? activeList.id : null)
+            const beinCount = (beinList && beinList.length) || 22
+            specialRows.unshift({
+                name: "⚽ beIN SPORTS",
+                id: "__bein__",
+                special: "bein",
+                count: beinCount,
+                sources: 1,
+            })
+        }
+
         const catList =
             activeList &&
             state.categories[activeList.id] &&
@@ -2577,9 +2833,10 @@ App.store = (function () {
                 }
             }
             const needle = searchOf("tv").trim().toLowerCase()
-            const filteredCats = state.parentalLocked
+            const filteredCats = (state.parentalLocked
                 ? catList.filter((cat) => !isAdultCategoryName(cat.name))
                 : catList.slice()
+            ).filter((cat) => cat.id !== "__bein__" && cat.name !== "⚽ beIN SPORTS")
             const sortedCatList = filteredCats.sort((a, b) => compareCategories(a.name, b.name))
             const regularRows = sortedCatList.map((cat) => ({
                 name: cat.name,
@@ -2614,7 +2871,9 @@ App.store = (function () {
         })
 
         const needle = searchOf("tv").trim().toLowerCase()
-        const names = Object.keys(counts).sort(compareCategories)
+        const names = Object.keys(counts)
+            .filter((name) => name !== "⚽ beIN SPORTS")
+            .sort(compareCategories)
         const regularRows = names.map((name) => {
             return { name, count: counts[name], sources: Object.keys(lists[name]).length }
         })
@@ -2697,6 +2956,8 @@ App.store = (function () {
             pool = state.favorites.filter((c) => matchesMedia(c, state.mediaType))
         } else if (state.catName === "🕒 Récents") {
             pool = state.recent.filter((c) => matchesMedia(c, state.mediaType))
+        } else if (state.catName === "⚽ beIN SPORTS" || state.catName === "beIN SPORTS" || state.catName === "__bein__") {
+            pool = getBeinChannelsList(scope)
         } else if (globalNeedle && state.mediaType === "live") {
             // In Android ZapActivity, the top search bar searches across ALL loaded channels or current category
             pool = allChannels().filter((channel) => {
@@ -2724,12 +2985,14 @@ App.store = (function () {
         const result = view(sorted, "tvchannels", {
             zone: "tvChannels",
             empty: isLoading
-                ? "Chargement des contenus…"
-                : state.catName === "⭐ Favoris"
-                    ? "Aucun favori enregistré dans cette section."
-                    : state.catName === "🕒 Récents"
-                        ? "Aucun historique récent dans cette section."
-                        : "Cette catégorie ne contient aucun contenu.",
+                ? "Chargement des flux beIN Sports…"
+                : state.catName === "⚽ beIN SPORTS"
+                    ? "Aucun flux beIN Sports disponible pour le moment."
+                    : state.catName === "⭐ Favoris"
+                        ? "Aucun favori enregistré dans cette section."
+                        : state.catName === "🕒 Récents"
+                            ? "Aucun historique récent dans cette section."
+                            : "Cette catégorie ne contient aucun contenu.",
         })
         result.loading = isLoading
         result.label = `${formatCount(result.total)} ${result.total === 1 ? "élément" : "éléments"}`

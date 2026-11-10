@@ -198,6 +198,51 @@ App.player = (function () {
     let stallCheckInterval = null
     let lastPlaybackTime = 0
     let stallCounter = 0
+    let liveRetryCount = 0
+    let liveRetryTimer = null
+    const MAX_LIVE_RETRIES = 8
+
+    function clearLiveRetry() {
+        if (liveRetryTimer) {
+            clearTimeout(liveRetryTimer)
+            liveRetryTimer = null
+        }
+    }
+
+    function scheduleLiveRetry(rawUrl, generation, reason) {
+        clearLiveRetry()
+        if (generation !== playbackGeneration || !rawUrl) return
+        const isVod =
+            typeof App !== "undefined" &&
+            App.store &&
+            App.store.state &&
+            App.store.state.playing &&
+            App.store.isVod &&
+            App.store.isVod(App.store.state.playing.channel)
+        if (isVod) {
+            fail(new Error("Flux interrompu"), generation)
+            return
+        }
+
+        if (liveRetryCount >= MAX_LIVE_RETRIES) {
+            console.warn(`[AntiCoupure] Maximum de tentatives atteint (${MAX_LIVE_RETRIES}). Échec du flux.`)
+            liveRetryCount = 0
+            fail(new Error("Flux interrompu - Reconnexion impossible"), generation)
+            return
+        }
+
+        liveRetryCount++
+        const delay = Math.min(800 * Math.pow(1.25, liveRetryCount - 1), 3500)
+        console.warn(`[AntiCoupure] Reconnexion automatique sans coupure (${liveRetryCount}/${MAX_LIVE_RETRIES}) dans ${Math.round(delay)}ms... Raison: ${reason}`)
+
+        liveRetryTimer = setTimeout(() => {
+            if (generation !== playbackGeneration) return
+            const sep = rawUrl.indexOf("?") !== -1 ? "&" : "?"
+            const cacheBusted = `${rawUrl.replace(/([?&])_r=\d+/, "")}${sep}_r=${Date.now()}`
+            destroyTsPlayer()
+            playWithVideo(cacheBusted, 0, generation)
+        }, delay)
+    }
 
     function clearStallWatchdog() {
         if (stallCheckInterval) {
@@ -222,7 +267,7 @@ App.player = (function () {
                 const cur = video.currentTime
                 for (let i = 0; i < video.buffered.length; i++) {
                     const bStart = video.buffered.start(i)
-                    if (bStart > cur && bStart - cur < 1.4) {
+                    if (bStart > cur && bStart - cur < 1.5) {
                         video.currentTime = bStart + 0.05
                         video.play().catch(() => {})
                         stallCounter = 0
@@ -234,13 +279,12 @@ App.player = (function () {
             // 2. Stall Detection (currentTime stuck while unpaused)
             if (Math.abs(video.currentTime - lastPlaybackTime) < 0.1 && video.readyState >= 1) {
                 stallCounter++
-                if (stallCounter >= 4) {
+                if (stallCounter >= 3) {
                     video.play().catch(() => {})
                 }
-                if (stallCounter >= 12) {
+                if (stallCounter >= 8) {
                     stallCounter = 0
                     if (activeUrl && generation === playbackGeneration) {
-                        const currentUrl = activeUrl
                         const isVod =
                             typeof App !== "undefined" &&
                             App.store &&
@@ -248,8 +292,13 @@ App.player = (function () {
                             App.store.state.playing &&
                             App.store.isVod &&
                             App.store.isVod(App.store.state.playing.channel)
-                        const resume = isVod ? (video.currentTime || 0) : 0
-                        play(currentUrl, lastRect, resume)
+                        if (!isVod) {
+                            console.warn("[AntiCoupure] Flux bloqué détecté par le watchdog. Relance immédiate...")
+                            scheduleLiveRetry(activeUrl, generation, "watchdog-stall")
+                        } else {
+                            const resume = video.currentTime || 0
+                            play(activeUrl, lastRect, resume)
+                        }
                     }
                 }
             } else {
@@ -263,6 +312,7 @@ App.player = (function () {
         if (generation !== undefined && generation !== playbackGeneration) return
         clearStart()
         clearStallWatchdog()
+        clearLiveRetry()
         activeUrl = ""
         playbackStarted = false
         playbackGeneration++
@@ -273,6 +323,12 @@ App.player = (function () {
     function started(generation) {
         if (generation !== undefined && generation !== playbackGeneration) return
         clearStart()
+        clearLiveRetry()
+        setTimeout(() => {
+            if (generation === playbackGeneration && playbackStarted) {
+                liveRetryCount = 0
+            }
+        }, 5000)
         startStallWatchdog(generation)
         if (avplay() && displayRectGeneration !== generation) {
             setRect()
@@ -288,7 +344,11 @@ App.player = (function () {
         clearStart()
         startTimer = setTimeout(() => {
             startTimer = null
-            fail({ message: "The channel is not responding" }, generation)
+            if (activeUrl && liveRetryCount < MAX_LIVE_RETRIES) {
+                scheduleLiveRetry(activeUrl, generation, "startup-timeout")
+            } else {
+                fail({ message: "The channel is not responding" }, generation)
+            }
         }, START_TIMEOUT_MS)
     }
 
@@ -345,6 +405,8 @@ App.player = (function () {
         playbackStarted = false
         clearStart()
         clearStallWatchdog()
+        clearLiveRetry()
+        liveRetryCount = 0
         killUpstream()
         destroyTsPlayer()
         const AV = avplay()
@@ -416,14 +478,14 @@ App.player = (function () {
 
         const isHls = /\.m3u8(\?|$)/i.test(url)
 
-        // Live MPEG-TS playback via mpegts.js (buffer 16MB + anti-stalling)
+        // Live MPEG-TS playback via mpegts.js (buffer 16MB + anti-coupure zero-cut)
         if (!isVodChannel && !isHls && typeof mpegts !== "undefined" && mpegts.isSupported()) {
             try {
                 const config = {
                     enableWorker: true,
                     lazyLoad: false,
                     enableStashBuffer: true,
-                    stashInitialSize: 768, // 768 KB initial buffer: rock-solid anti-stutter pipeline
+                    stashInitialSize: 16384, // 16 MB buffer stash: rock-solid zero-cut anti-coupure playback
                     autoCleanupSourceBuffer: true,
                     autoCleanupMaxBackwardDuration: 30,
                     autoCleanupMinBackwardDuration: 15,
@@ -460,7 +522,11 @@ App.player = (function () {
                         return
                     }
                     console.warn("mpegts error:", type, detail, info)
-                    fail(new Error("Erreur de flux vidéo"), generation)
+                    if (!isVodChannel && liveRetryCount < MAX_LIVE_RETRIES) {
+                        scheduleLiveRetry(url, generation, `${type}:${detail}`)
+                    } else {
+                        fail(new Error("Erreur de flux vidéo"), generation)
+                    }
                 })
                 waitForStart(generation)
                 tsPlayer.load()
@@ -476,6 +542,8 @@ App.player = (function () {
                             video.play().then(() => started(generation)).catch((e) => {
                                 if (generation === playbackGeneration && e && e.name !== "AbortError") fail(e, generation)
                             })
+                        } else if (!isVodChannel && liveRetryCount < MAX_LIVE_RETRIES) {
+                            scheduleLiveRetry(url, generation, "play-failed")
                         } else {
                             fail(err, generation)
                         }
@@ -505,7 +573,11 @@ App.player = (function () {
         }
         const onVideoError = () => {
             if (generation === playbackGeneration) {
-                fail(new Error("Impossible de lire ce flux vidéo"), generation)
+                if (!isVodChannel && liveRetryCount < MAX_LIVE_RETRIES) {
+                    scheduleLiveRetry(url, generation, "html5-video-error")
+                } else {
+                    fail(new Error("Impossible de lire ce flux vidéo"), generation)
+                }
             }
         }
         video.addEventListener("error", onVideoError, { once: true })
