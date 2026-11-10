@@ -677,11 +677,55 @@ App.player = (function () {
             }
         }
 
+        // Live MPEG-TS playback on Apple WebKit (iOS Safari / Chrome iOS) via on-the-fly HLS Transmuxer
+        if (!isVodChannel && !isHls && (typeof mpegts === "undefined" || !mpegts.isSupported())) {
+            if (video.canPlayType && (video.canPlayType("application/vnd.apple.mpegurl") || video.canPlayType("application/x-mpegURL"))) {
+                const transmuxHlsUrl = `${window.location.origin}/hls-live/stream.m3u8?url=${encodeURIComponent(url)}`
+                console.log("[iOS WebKit HLS Transmuxer] Transmultiplexage TS -> HLS pour iPhone/iPad:", transmuxHlsUrl)
+                destroyTsPlayer()
+                video.src = transmuxHlsUrl
+                try {
+                    video.load()
+                } catch (e) {}
+                waitForStart(generation, false)
+                video.play()
+                    .then(() => started(generation))
+                    .catch((err) => {
+                        if (generation !== playbackGeneration) return
+                        if (err && (err.name === "AbortError" || String(err.message || "").includes("interrupted"))) {
+                            return
+                        }
+                        if (err && err.name === "NotAllowedError") {
+                            video.muted = true
+                            video.play().then(() => started(generation)).catch((e) => {
+                                if (generation === playbackGeneration && e && e.name !== "AbortError") fail(e, generation)
+                            })
+                        } else if (liveRetryCount < MAX_LIVE_RETRIES) {
+                            scheduleLiveRetry(url, generation, "ios-transmux-error")
+                        } else {
+                            fail(err, generation)
+                        }
+                    })
+                return
+            }
+        }
+
         // Direct HTML5 Video for VOD (Movies & Series: MP4, MKV) and native HLS
         video.src = streamUrl
         try {
             video.load()
         } catch {}
+
+        const onMetadata = () => {
+            if (generation === playbackGeneration && isVodChannel) {
+                if (typeof App !== "undefined" && App.store && App.store.refreshPlayback) {
+                    App.store.refreshPlayback()
+                }
+            }
+        }
+        video.addEventListener("loadedmetadata", onMetadata, { once: true })
+        video.addEventListener("durationchange", onMetadata)
+
         if (resumeAt > 0) {
             video.addEventListener(
                 "loadedmetadata",
@@ -699,14 +743,18 @@ App.player = (function () {
         }
         const onVideoError = (ev) => {
             if (generation === playbackGeneration) {
-                if (isVodChannel && vodRetryCount < 3) {
+                if (isVodChannel && vodRetryCount < 6) {
                     vodRetryCount++
-                    console.warn(`[VOD Retry] Reconnexion automatique (${vodRetryCount}/3)...`)
+                    const delay = Math.min(500 * Math.pow(1.3, vodRetryCount - 1), 3000)
+                    console.warn(`[VOD Auto-Retry] Reconnexion automatique (${vodRetryCount}/6) dans ${Math.round(delay)}ms...`)
                     setTimeout(() => {
                         if (generation === playbackGeneration) {
+                            if (vodRetryCount >= 2 && typeof App !== "undefined" && App.api && App.api.clearStalkerCache) {
+                                App.api.clearStalkerCache()
+                            }
                             playWithVideo(url, resumeAt, generation)
                         }
-                    }, 800)
+                    }, delay)
                     return
                 }
                 if (!isVodChannel && liveRetryCount < MAX_LIVE_RETRIES) {

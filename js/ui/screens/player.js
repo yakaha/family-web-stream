@@ -41,6 +41,7 @@ App.uiScreens = App.uiScreens || {}
         const isFsState = useState(App.isFullscreen ? App.isFullscreen() : false)
         const isFullscreen = isFsState[0]
         const setIsFullscreen = isFsState[1]
+        const lastTapTime = useRef(0)
 
         useEffect(() => {
             function updateFs() {
@@ -184,6 +185,22 @@ App.uiScreens = App.uiScreens || {}
             }
         }
 
+        function handleScreenTap(e) {
+            if (e && e.target && e.target.closest("button, input, select, a, .vod-controls, .ov-actions, .player-top-bar, .fs-stats-hud, .play-card, .zap")) {
+                return
+            }
+            const now = Date.now()
+            if (now - lastTapTime.current < 450) {
+                return
+            }
+            lastTapTime.current = now
+            if (!overlay) {
+                show()
+            } else {
+                hide()
+            }
+        }
+
         useEffect(() => {
             let lastX = 0
             let lastY = 0
@@ -232,16 +249,10 @@ App.uiScreens = App.uiScreens || {}
         return html`<section
             class=${`screen player${player.hardware() ? " hw" : ""}`}
             id="screen-player"
-            onClick=${function (e) {
-                if (e.target && !e.target.closest("button, input, .vod-controls, .ov-actions, .player-top-bar, .fs-stats-hud")) {
-                    toggleOverlay()
-                }
-            }}
+            onClick=${handleScreenTap}
             onPointerUp=${function (e) {
                 if (e.pointerType === "touch" || e.pointerType === "pen") {
-                    if (e.target && !e.target.closest("button, input, .vod-controls, .ov-actions, .player-top-bar, .fs-stats-hud")) {
-                        toggleOverlay()
-                    }
+                    handleScreenTap(e)
                 }
             }}
         >
@@ -516,7 +527,14 @@ App.uiScreens = App.uiScreens || {}
                                                     >
                                                 </button>`
                                               : audioTracks.length === 1
-                                                ? html`<span class="track-indicator">
+                                                ? html`<button
+                                                      class="btn vod-action vod-track"
+                                                      tabindex="-1"
+                                                      onClick=${function () {
+                                                          store.notify(`Audio actif : ${trackLabel(audioTracks[0], 0)}`)
+                                                          show()
+                                                      }}
+                                                  >
                                                       <span class="vod-action-icon">♫</span
                                                       ><span class="vod-track-copy"
                                                           ><small>AUDIO</small
@@ -524,10 +542,17 @@ App.uiScreens = App.uiScreens || {}
                                                               >${trackLabel(audioTracks[0], 0)}</strong
                                                           ></span
                                                       >
-                                                  </span>`
-                                                : html`<span class="track-indicator unavailable">
+                                                  </button>`
+                                                : html`<button
+                                                      class="btn vod-action vod-track unavailable"
+                                                      tabindex="-1"
+                                                      onClick=${function () {
+                                                          store.notify("Audio : Piste principale active")
+                                                          show()
+                                                      }}
+                                                  >
                                                       <span class="vod-action-icon">♫</span><span class="vod-track-copy"><small>AUDIO</small><strong>Défaut</strong></span>
-                                                  </span>`
+                                                  </button>`
                                       }
                                       ${
                                           subtitleTracks.length
@@ -561,9 +586,16 @@ App.uiScreens = App.uiScreens || {}
                                                         ></span
                                                     >
                                                 </button>`
-                                              : html`<span class="track-indicator unavailable">
+                                              : html`<button
+                                                    class="btn vod-action vod-track unavailable"
+                                                    tabindex="-1"
+                                                    onClick=${function () {
+                                                        store.notify("Aucun sous-titre disponible sur ce flux")
+                                                        show()
+                                                    }}
+                                                >
                                                     <span class="vod-action-icon">CC</span><span class="vod-track-copy"><small>SOUS-TITRES</small><strong>Aucun</strong></span>
-                                                </span>`
+                                                </button>`
                                       }
                                       <button
                                           class="btn vod-action vod-aspect"

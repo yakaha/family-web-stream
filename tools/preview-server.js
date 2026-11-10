@@ -4,6 +4,7 @@ const fs = require("fs")
 const path = require("path")
 const os = require("os")
 const { exec } = require("child_process")
+const { EventEmitter } = require("events")
 
 function getLocalIp() {
     const interfaces = os.networkInterfaces()
@@ -442,6 +443,211 @@ async function handleYacineStream(req, res) {
     }
 }
 
+class TsHlsSession extends EventEmitter {
+    constructor(targetUrl) {
+        super()
+        this.targetUrl = targetUrl
+        this.segments = new Map()
+        this.sequence = 0
+        this.currentBuffer = []
+        this.currentBytes = 0
+        this.patPmtPackets = null
+        this.lastAccess = Date.now()
+        this.isDestroyed = false
+        this.req = null
+        this.res = null
+        this.startStream()
+    }
+
+    startStream() {
+        try {
+            const parsed = new URL(this.targetUrl)
+            const client = parsed.protocol === "https:" ? https : http
+            const options = {
+                protocol: parsed.protocol,
+                hostname: parsed.hostname,
+                port: parsed.port || (parsed.protocol === "https:" ? 443 : 80),
+                path: parsed.pathname + parsed.search,
+                method: "GET",
+                headers: {
+                    "User-Agent": "Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3",
+                    "Accept": "*/*",
+                },
+                agent: parsed.protocol === "https:" ? httpsAgent : httpAgent,
+                timeout: 0,
+            }
+
+            this.req = client.request(options, (res) => {
+                this.res = res
+
+                if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location) {
+                    let nextUrl = res.headers.location
+                    if (!/^https?:\/\//i.test(nextUrl)) {
+                        nextUrl = new URL(nextUrl, this.targetUrl).toString()
+                    }
+                    this.targetUrl = nextUrl
+                    this.startStream()
+                    return
+                }
+
+                let residual = null
+
+                res.on("data", (chunk) => {
+                    if (this.isDestroyed) return
+                    this.lastAccess = Date.now()
+
+                    let data = chunk
+                    if (residual && residual.length > 0) {
+                        data = Buffer.concat([residual, chunk])
+                        residual = null
+                    }
+
+                    let offset = 0
+                    while (offset < data.length && data[offset] !== 0x47) {
+                        offset++
+                    }
+
+                    const packetCount = Math.floor((data.length - offset) / 188)
+                    if (packetCount > 0) {
+                        const alignedLength = packetCount * 188
+                        const alignedBuffer = data.subarray(offset, offset + alignedLength)
+                        this.processPackets(alignedBuffer)
+                        offset += alignedLength
+                    }
+
+                    if (offset < data.length) {
+                        residual = Buffer.from(data.subarray(offset))
+                    }
+                })
+
+                res.on("end", () => {
+                    if (!this.isDestroyed && this.currentBytes > 0) {
+                        this.sealSegment()
+                    }
+                })
+
+                res.on("error", (err) => {
+                    console.warn("[TsHlsSession] Upstream error:", err.message)
+                })
+            })
+
+            this.req.on("error", (err) => {
+                console.warn("[TsHlsSession] Request error:", err.message)
+            })
+
+            this.req.end()
+        } catch (e) {
+            console.error("[TsHlsSession] Init error:", e)
+        }
+    }
+
+    processPackets(buffer) {
+        if (!this.patPmtPackets) {
+            for (let i = 0; i <= buffer.length - 188; i += 188) {
+                if (buffer[i] === 0x47) {
+                    const pid = ((buffer[i + 1] & 0x1f) << 8) | buffer[i + 2]
+                    if (pid === 0) {
+                        this.patPmtPackets = Buffer.from(buffer.subarray(i, Math.min(buffer.length, i + 188 * 3)))
+                        break
+                    }
+                }
+            }
+        }
+
+        this.currentBuffer.push(buffer)
+        this.currentBytes += buffer.length
+
+        const threshold = this.sequence < 2 ? 400 * 1024 : 1200 * 1024
+        if (this.currentBytes >= threshold) {
+            this.sealSegment()
+        }
+    }
+
+    sealSegment() {
+        if (this.currentBuffer.length === 0) return
+        const fullBuffer = Buffer.concat(this.currentBuffer)
+        this.currentBuffer = []
+        this.currentBytes = 0
+
+        let finalSegment = fullBuffer
+        if (this.patPmtPackets) {
+            finalSegment = Buffer.concat([this.patPmtPackets, fullBuffer])
+        }
+
+        const seq = this.sequence++
+        this.segments.set(seq, {
+            data: finalSegment,
+            duration: Math.max(1.8, Math.min(4.0, finalSegment.length / 450000)),
+            created: Date.now(),
+        })
+
+        if (this.segments.size > 6) {
+            const oldestSeq = Math.min(...this.segments.keys())
+            this.segments.delete(oldestSeq)
+        }
+
+        this.emit("segment", seq)
+    }
+
+    waitForFirstSegment(timeoutMs = 4000) {
+        if (this.segments.size > 0) return Promise.resolve()
+        return new Promise((resolve) => {
+            const timer = setTimeout(resolve, timeoutMs)
+            this.once("segment", () => {
+                clearTimeout(timer)
+                resolve()
+            })
+        })
+    }
+
+    getPlaylist(baseUrl, sessionId) {
+        this.lastAccess = Date.now()
+        const seqs = Array.from(this.segments.keys()).sort((a, b) => a - b)
+        if (seqs.length === 0) {
+            return `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:4\n#EXT-X-MEDIA-SEQUENCE:0\n`
+        }
+
+        const firstSeq = seqs[0]
+        let m3u8 = `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:4\n#EXT-X-MEDIA-SEQUENCE:${firstSeq}\n`
+        for (const s of seqs) {
+            const seg = this.segments.get(s)
+            const dur = seg && seg.duration ? seg.duration.toFixed(3) : "2.500"
+            m3u8 += `#EXTINF:${dur},\n${baseUrl}/hls-live/segment.ts?session=${sessionId}&seq=${s}\n`
+        }
+        return m3u8
+    }
+
+    getSegment(seq) {
+        this.lastAccess = Date.now()
+        const seg = this.segments.get(Number(seq))
+        return seg ? seg.data : null
+    }
+
+    destroy() {
+        this.isDestroyed = true
+        try {
+            if (this.res) this.res.destroy()
+        } catch {}
+        try {
+            if (this.req) this.req.destroy()
+        } catch {}
+        this.segments.clear()
+        this.currentBuffer = []
+    }
+}
+
+const hlsLiveSessions = new Map()
+
+setInterval(() => {
+    const now = Date.now()
+    for (const [id, session] of hlsLiveSessions.entries()) {
+        if (now - session.lastAccess > 25000) {
+            session.destroy()
+            hlsLiveSessions.delete(id)
+        }
+    }
+}, 10000)
+
 const server = http.createServer((req, res) => {
     res.setHeader("Access-Control-Allow-Origin", "*")
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, HEAD")
@@ -461,6 +667,68 @@ const server = http.createServer((req, res) => {
             "Access-Control-Allow-Origin": "*",
         })
         res.end(JSON.stringify({ ok: true, message: "Stream stopped" }))
+        return
+    }
+
+    if (req.url.startsWith("/hls-live/stream.m3u8")) {
+        let targetUrl = ""
+        try {
+            const u = new URL(req.url, "http://127.0.0.1")
+            targetUrl = u.searchParams.get("url") || ""
+        } catch {}
+        if (!targetUrl) {
+            const urlIdx = req.url.indexOf("url=")
+            if (urlIdx !== -1) {
+                targetUrl = decodeURIComponent(req.url.slice(urlIdx + 4))
+            }
+        }
+        if (!targetUrl) {
+            res.writeHead(400, { "Content-Type": "text/plain" })
+            res.end("Missing stream url")
+            return
+        }
+        const sessionId = Buffer.from(targetUrl).toString("base64url").slice(0, 32)
+        let session = hlsLiveSessions.get(sessionId)
+        if (!session || session.isDestroyed) {
+            session = new TsHlsSession(targetUrl)
+            hlsLiveSessions.set(sessionId, session)
+        }
+        session.waitForFirstSegment(3500).then(() => {
+            const host = req.headers.host ? `http://${req.headers.host}` : ""
+            const playlist = session.getPlaylist(host, sessionId)
+            res.writeHead(200, {
+                "Content-Type": "application/vnd.apple.mpegurl; charset=utf-8",
+                "Access-Control-Allow-Origin": "*",
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+            })
+            res.end(playlist)
+        })
+        return
+    }
+
+    if (req.url.startsWith("/hls-live/segment.ts")) {
+        const u = new URL(req.url, "http://127.0.0.1")
+        const sessionId = u.searchParams.get("session") || ""
+        const seq = u.searchParams.get("seq") || "0"
+        const session = hlsLiveSessions.get(sessionId)
+        if (!session) {
+            res.writeHead(404, { "Content-Type": "text/plain" })
+            res.end("Session not found")
+            return
+        }
+        const data = session.getSegment(seq)
+        if (!data) {
+            res.writeHead(404, { "Content-Type": "text/plain" })
+            res.end("Segment not ready")
+            return
+        }
+        res.writeHead(200, {
+            "Content-Type": "video/mp2t",
+            "Content-Length": data.length,
+            "Access-Control-Allow-Origin": "*",
+            "Cache-Control": "public, max-age=10",
+        })
+        res.end(data)
         return
     }
 

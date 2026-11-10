@@ -73,6 +73,16 @@
     box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.45), 0 8px 24px rgba(0, 0, 0, 0.5) !important;
 }
 
+/* Seekbar & Range Sliders must NEVER have a rectangular outline/border on focus */
+.fs-android-app input[type="range"]:focus,
+.fs-android-app input[type="range"].focused,
+.fs-android-app #vodSeek:focus,
+.fs-android-app #vodSeek.focused {
+    outline: none !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
 /* ==========================================================================
    BRAND HEADER (include_family_premium_brand.xml + ic_family_premium_tv.xml)
    ========================================================================== */
