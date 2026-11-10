@@ -251,6 +251,11 @@ App.uiScreens = App.uiScreens || {}
                                 key=${row.id || row.name}
                                 data-group=${row.name}
                                 tabindex="-1"
+                                onPointerDown=${(e) => {
+                                    if (e.pointerType === "touch" || e.pointerType === "pen") {
+                                        store.openTvCategory(row.name)
+                                    }
+                                }}
                                 onClick=${() => store.openTvCategory(row.name)}
                             >
                                 <span class="fs-zap-cat-name">${row.name}</span>
@@ -524,6 +529,11 @@ App.uiScreens = App.uiScreens || {}
                                 key=${row.id || row.name}
                                 data-group=${row.name}
                                 tabindex="-1"
+                                onPointerDown=${(e) => {
+                                    if (e.pointerType === "touch" || e.pointerType === "pen") {
+                                        store.openTvCategory(row.name)
+                                    }
+                                }}
                                 onClick=${() => store.openTvCategory(row.name)}
                             >
                                 <span class="fs-zap-cat-name">${row.name}</span>

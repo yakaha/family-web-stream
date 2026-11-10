@@ -11,7 +11,7 @@ App.uiScreens = App.uiScreens || {}
     const useEffect = kit.useEffect
     const useRef = kit.useRef
     const clock = kit.clock
-    const OVERLAY_MS = 3800
+    const OVERLAY_MS = 5000
 
     function formatPosition(value) {
         const num = Number(value)
@@ -237,6 +237,13 @@ App.uiScreens = App.uiScreens || {}
                     toggleOverlay()
                 }
             }}
+            onPointerUp=${function (e) {
+                if (e.pointerType === "touch" || e.pointerType === "pen") {
+                    if (e.target && !e.target.closest("button, input, .vod-controls, .ov-actions, .player-top-bar, .fs-stats-hud")) {
+                        toggleOverlay()
+                    }
+                }
+            }}
         >
             <div
                 class=${`player-top-bar${
@@ -251,6 +258,10 @@ App.uiScreens = App.uiScreens || {}
                     id="playerBackBtn"
                     title="Retour"
                     tabindex="-1"
+                    onPointerDown=${function (e) {
+                        e.stopPropagation()
+                        handleExit(e)
+                    }}
                     onClick=${handleExit}
                 >
                     <span class="icon-arrow">←</span>
@@ -265,6 +276,10 @@ App.uiScreens = App.uiScreens || {}
                     id="playerFullscreenBtn"
                     title=${isFullscreen ? "Quitter le plein écran" : "Plein écran"}
                     tabindex="-1"
+                    onPointerDown=${function (e) {
+                        e.stopPropagation()
+                        handleToggleFs(e)
+                    }}
                     onClick=${handleToggleFs}
                 >
                     <span class="icon-fs">${isFullscreen ? "⤦" : "⛶"}</span>
@@ -584,6 +599,7 @@ App.uiScreens = App.uiScreens || {}
                                           class="btn vod-action vod-exit"
                                           id="vodExitBtn"
                                           tabindex="-1"
+                                          onPointerDown=${handleExit}
                                           onClick=${handleExit}
                                       >
                                           <span class="vod-action-icon">✕</span>
@@ -665,6 +681,7 @@ App.uiScreens = App.uiScreens || {}
                                       class="btn vod-action ov-exit"
                                       id="ovExitBtn"
                                       tabindex="-1"
+                                      onPointerDown=${handleExit}
                                       onClick=${handleExit}
                                   >
                                       <span class="vod-action-icon">✕</span>

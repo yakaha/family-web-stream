@@ -150,6 +150,11 @@ function proxyRequest(req, res, targetUrl) {
     } else if (isModernWebStream && !headers["Referer"]) {
         headers["Referer"] = "https://yacine.website/"
     }
+    if (isModernWebStream || targetUrl.includes("yacine")) {
+        headers["X-Forwarded-For"] = YACINE_MENA_IP
+        headers["X-Real-IP"] = YACINE_MENA_IP
+        headers["CF-Connecting-IP"] = YACINE_MENA_IP
+    }
     if (req.headers["authorization"]) {
         headers["Authorization"] = req.headers["authorization"]
     }
@@ -264,6 +269,7 @@ function proxyRequest(req, res, targetUrl) {
 
 const yacineStreamCache = new Map()
 const yacineLastValidPlaylist = new Map()
+const YACINE_MENA_IP = "105.101.50.12" // IP MENA / Algérie pour débloquer les droits géographiques de diffusion
 
 function fetchYacineUrl(targetUrl, referer = "https://yacine.website/") {
     return new Promise((resolve, reject) => {
@@ -277,6 +283,9 @@ function fetchYacineUrl(targetUrl, referer = "https://yacine.website/") {
                         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                     Referer: referer,
                     Accept: "*/*",
+                    "X-Forwarded-For": YACINE_MENA_IP,
+                    "X-Real-IP": YACINE_MENA_IP,
+                    "CF-Connecting-IP": YACINE_MENA_IP,
                 },
                 timeout: 15000,
             },
@@ -315,9 +324,14 @@ async function handleYacineStream(req, res) {
         let meta = yacineStreamCache.get(id)
         if (!meta || now - meta.time > 180000) {
             const apiRes = await fetchYacineUrl(`https://yacine.website/?get_channel_stream=${encodeURIComponent(id)}`)
-            const parsed = JSON.parse(apiRes.body)
+            let parsed
+            try {
+                parsed = JSON.parse(apiRes.body)
+            } catch (e) {
+                throw new Error(`Format Yacine invalide (HTTP ${apiRes.statusCode}): ${apiRes.body.slice(0, 150)}`)
+            }
             if (parsed.status !== "success") {
-                throw new Error("Yacine API status not success")
+                throw new Error(`Yacine API: ${parsed.message || parsed.status || "Statut non supporté"}`)
             }
             meta = { parsed, time: now }
             yacineStreamCache.set(id, meta)
@@ -394,7 +408,7 @@ async function handleYacineStream(req, res) {
                 } else if (!trimmed.startsWith("http")) {
                     chunkUrl = `https://yacine.website/${trimmed}`
                 }
-                const proxiedChunk = `/proxy?stream=1&ref=${encodeURIComponent("https://yacine.website/")}&url=${encodeURIComponent(chunkUrl)}`
+                const proxiedChunk = `/proxy/chunk.ts?stream=1&ref=${encodeURIComponent("https://yacine.website/")}&url=${encodeURIComponent(chunkUrl)}`
                 rewritten.push(proxiedChunk)
             }
         }

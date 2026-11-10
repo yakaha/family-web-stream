@@ -957,67 +957,14 @@ App.store = (function () {
             return Promise.resolve([])
         }
 
-        if (categoryName === "⚽ beIN SPORTS" || categoryName === "beIN SPORTS" || categoryName === "__bein__") {
-            const list = state.tvSource ? listById(state.tvSource) : state.lists[0]
-            if (!list) return Promise.resolve(getBeinChannelsList())
-            const listCats = state.categories[list.id] && state.categories[list.id].live
-            if (!listCats || !listCats.length) return Promise.resolve(getBeinChannelsList(list.id))
-
-            const beinCats = listCats.filter((c) => /bein/i.test(c.name))
-            if (!beinCats.length) return Promise.resolve(getBeinChannelsList(list.id))
-
-            state.loadedCategories[list.id] = state.loadedCategories[list.id] || {}
-            const unloaded = beinCats.filter((cat) => !state.loadedCategories[list.id][`live:${cat.id}`])
-            if (!unloaded.length) {
-                return Promise.resolve(getBeinChannelsList(list.id))
-            }
-
-            state.categoryLoading = categoryName
-            emit()
-
-            function appendBeinLoaded(newItems) {
-                if (!newItems || !newItems.length) return
-                const current = state.channels[list.id] || []
-                const combined = current.slice()
-                const seen = Object.create(null)
-                combined.forEach((c) => {
-                    seen[`${c.mediaType || "live"}|${c.streamId || c.url || c.cmd || c.name}`] = true
-                })
-                let addedCount = 0
-                newItems.forEach((item) => {
-                    const key = `${item.mediaType || "live"}|${item.streamId || item.url || item.cmd || item.name}`
-                    if (!seen[key]) {
-                        seen[key] = true
-                        combined.push(Object.assign({ listId: list.id }, item))
-                        addedCount++
-                    }
-                })
-                if (addedCount > 0) {
-                    state.channels[list.id] = combined
-                    invalidate()
-                    if (state.screen === "tv") emit()
-                }
-            }
-
-            const tasks = unloaded.map((cObj) => {
-                const cKey = `live:${cObj.id}`
-                return App.api
-                    .loadCategoryChannels(list, cObj.id, "live", cObj.name)
-                    .then((items) => {
-                        state.loadedCategories[list.id][cKey] = true
-                        appendBeinLoaded(items)
-                        return items
-                    })
-                    .catch((err) => {
-                        console.warn("Could not load beIN category:", cObj.name, err)
-                        return []
-                    })
-            })
-
-            return Promise.all(tasks).finally(() => {
-                state.categoryLoading = false
-                emit()
-            })
+        if (
+            categoryName === "⚽ beIN SPORTS (Yacine TV)" ||
+            categoryName === "⚽ beIN SPORTS" ||
+            categoryName === "beIN SPORTS" ||
+            categoryName === "__bein__"
+        ) {
+            state.categoryLoading = false
+            return Promise.resolve(getBeinChannelsList())
         }
 
         const list = state.tvSource ? listById(state.tvSource) : state.lists[0]
@@ -2024,9 +1971,13 @@ App.store = (function () {
     function openTvCategory(name) {
         state.categoryManual = true
         state.viewLimit = PAGE_SIZE
-        set({ catName: name, selectedMovie: null })
+        const isBein = name === "⚽ beIN SPORTS (Yacine TV)" || name === "__bein__"
+        const isSpecial = isBein || name === "⭐ Favoris" || name === "🕒 Récents"
+        set({ catName: name, selectedMovie: null, categoryLoading: isSpecial ? false : name })
         focus("tvChannels", 0, 0)
         ensureCategoryLoaded(name).then(() => {
+            state.categoryLoading = false
+            emit()
             if (state.screen === "tv" && state.mediaType === "live" && !state.preview) {
                 const chans = visibleTvCategory().items
                 if (chans && chans.length > 0) {

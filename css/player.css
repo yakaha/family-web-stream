@@ -5,6 +5,9 @@
     display: block;
     overflow: hidden;
     background: transparent;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
 }
 
 .video-surface {
@@ -210,7 +213,7 @@ body.playing {
     right: 0;
     bottom: 0;
     left: 0;
-    z-index: 12;
+    z-index: 45;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -870,12 +873,12 @@ body.playing {
     top: 0;
     left: 0;
     right: 0;
-    z-index: 28;
+    z-index: 60;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: max(16px, env(safe-area-inset-top, 16px)) max(24px, env(safe-area-inset-right, 24px)) 16px max(24px, env(safe-area-inset-left, 24px));
-    background: linear-gradient(180deg, rgba(5, 5, 5, 0.88) 0%, rgba(5, 5, 5, 0.45) 60%, transparent 100%);
+    background: linear-gradient(180deg, rgba(5, 5, 5, 0.94) 0%, rgba(5, 5, 5, 0.5) 60%, transparent 100%);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.28s var(--ease);
@@ -983,15 +986,30 @@ body.playing {
 @media (max-width: 760px) {
     .player-top-bar {
         padding: max(12px, env(safe-area-inset-top, 12px)) 12px 12px;
+        z-index: 60;
     }
     .player-btn-back,
     .player-btn-fs {
-        min-height: 42px;
-        padding: 6px 14px;
-        font-size: 13px;
+        min-height: 44px;
+        padding: 8px 16px;
+        font-size: 14px;
+        font-weight: 700;
+        background: rgba(22, 22, 21, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.28);
     }
     .player-top-meta {
-        display: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        max-width: 48%;
+        overflow: hidden;
+    }
+    .player-channel-title {
+        font-size: 13px;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .zap {

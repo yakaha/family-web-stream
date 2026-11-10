@@ -426,7 +426,6 @@ App.tv = (function () {
         onKey = handler
         onFocus = (options && options.onFocus) || null
         document.addEventListener("keydown", handle)
-        window.addEventListener("pointerdown", requestFullscreenOnce, { passive: true })
         window.addEventListener(
             "pointermove",
             (e) => {
@@ -471,7 +470,6 @@ App.tv = (function () {
         document.addEventListener(
             "pointerdown",
             (e) => {
-                requestFullscreenOnce()
                 const target = e.target
                 if (!target || !target.closest) return
                 const focusable = target.closest(interactiveSelector)
