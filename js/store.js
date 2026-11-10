@@ -317,13 +317,7 @@ App.store = (function () {
         if (!str) return 3
 
         // Priority -2: Pinned beIN SPORTS (Yacine TV)
-        if (
-            str.includes("bein sport") ||
-            str === "⚽ bein sports (yacine tv)" ||
-            str === "⚽ bein sports" ||
-            str === "bein sports" ||
-            str === "__bein__"
-        )
+        if (str === "⚽ bein sports (yacine tv)" || str === "__bein__")
             return -2
 
         // Priority -1: Special Favorites / Recents
@@ -442,40 +436,7 @@ App.store = (function () {
 
     function getBeinChannelsList(scope) {
         const activeId = scope || state.tvSource || (state.lists[0] && state.lists[0].id)
-        const serverChans = allChannels().filter((channel) => {
-            if (activeId && channel.listId !== activeId) return false
-            if (!matchesMedia(channel, "live")) return false
-            return isBeinChannel(channel)
-        })
-
-        const permChans = getPermanentBeinChannels(activeId)
-        const merged = []
-        const seenNorm = Object.create(null)
-
-        // 1. Add permanent anti-coupure Yacine channels
-        permChans.forEach((perm) => {
-            const norm = normalizeChannelName(perm.name)
-            if (norm) seenNorm[norm] = true
-            merged.push(perm)
-        })
-
-        // 2. Add server beIN channels
-        serverChans.forEach((ch) => {
-            const norm = normalizeChannelName(ch.name)
-            if (!norm || !seenNorm[norm]) {
-                seenNorm[norm] = true
-                merged.push(ch)
-            }
-        })
-
-        merged.sort((a, b) => {
-            const pA = channelLanguagePriority(a)
-            const pB = channelLanguagePriority(b)
-            if (pA !== pB) return pA - pB
-            return naturalSort(a.name, b.name)
-        })
-
-        return merged
+        return getPermanentBeinChannels(activeId)
     }
 
     function sources() {
@@ -2845,7 +2806,7 @@ App.store = (function () {
             const filteredCats = (state.parentalLocked
                 ? catList.filter((cat) => !isAdultCategoryName(cat.name))
                 : catList.slice()
-            ).filter((cat) => cat.id !== "__bein__" && !String(cat.name || "").includes("beIN SPORTS"))
+            ).filter((cat) => cat.id !== "__bein__" && cat.name !== "⚽ beIN SPORTS (Yacine TV)")
             const sortedCatList = filteredCats.sort((a, b) => compareCategories(a.name, b.name))
             const regularRows = sortedCatList.map((cat) => ({
                 name: cat.name,
@@ -2881,7 +2842,7 @@ App.store = (function () {
 
         const needle = searchOf("tv").trim().toLowerCase()
         const names = Object.keys(counts)
-            .filter((name) => !String(name || "").includes("beIN SPORTS"))
+            .filter((name) => name !== "⚽ beIN SPORTS (Yacine TV)")
             .sort(compareCategories)
         const regularRows = names.map((name) => {
             return { name, count: counts[name], sources: Object.keys(lists[name]).length }
@@ -2965,13 +2926,7 @@ App.store = (function () {
             pool = state.favorites.filter((c) => matchesMedia(c, state.mediaType))
         } else if (state.catName === "🕒 Récents") {
             pool = state.recent.filter((c) => matchesMedia(c, state.mediaType))
-        } else if (
-            state.catName === "⚽ beIN SPORTS (Yacine TV)" ||
-            state.catName === "⚽ beIN SPORTS" ||
-            state.catName === "beIN SPORTS" ||
-            state.catName === "__bein__" ||
-            /bein\s*sports/i.test(state.catName)
-        ) {
+        } else if (state.catName === "⚽ beIN SPORTS (Yacine TV)" || state.catName === "__bein__") {
             pool = getBeinChannelsList(scope)
         } else if (globalNeedle && state.mediaType === "live") {
             // In Android ZapActivity, the top search bar searches across ALL loaded channels or current category

@@ -512,62 +512,92 @@ App.player = (function () {
         const streamUrl = proxifyStream(url, isVodChannel)
         const isHls = /\.m3u8(\?|$)/i.test(url) || /yacine\/play/i.test(url)
 
-        // HLS.js adaptive engine for live playlists and Yacine TV
-        if (!isVodChannel && isHls && typeof Hls !== "undefined" && Hls.isSupported()) {
-            try {
-                destroyHlsInstance()
-                const hls = new Hls({
-                    enableWorker: true,
-                    lowLatencyMode: true,
-                    backBufferLength: 60,
-                    maxBufferLength: 30,
-                    maxMaxBufferLength: 60,
-                    fragLoadingTimeOut: 20000,
-                    manifestLoadingTimeOut: 20000,
-                    levelLoadingTimeOut: 20000,
-                })
-                hlsInstance = hls
-                hls.attachMedia(video)
-                hls.on(Hls.Events.MEDIA_ATTACHED, () => {
-                    hls.loadSource(streamUrl)
-                })
-                hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                    video.play()
-                        .then(() => started(generation))
-                        .catch((e) => {
-                            if (generation === playbackGeneration && e && e.name !== "AbortError") {
-                                video.muted = true
-                                video.play().then(() => started(generation)).catch(() => {})
-                            }
-                        })
-                })
-                hls.on(Hls.Events.ERROR, (event, data) => {
-                    if (generation !== playbackGeneration) return
-                    if (data.fatal) {
-                        switch (data.type) {
-                            case Hls.ErrorTypes.NETWORK_ERROR:
-                                console.warn("[HLS Network Error] Tentative de récupération...", data)
-                                hls.startLoad()
-                                break
-                            case Hls.ErrorTypes.MEDIA_ERROR:
-                                console.warn("[HLS Media Error] Récupération buffer...", data)
-                                hls.recoverMediaError()
-                                break
-                            default:
-                                destroyHlsInstance()
-                                if (liveRetryCount < MAX_LIVE_RETRIES) {
-                                    scheduleLiveRetry(url, generation, "hls-fatal")
-                                } else {
-                                    fail(new Error("Erreur de flux vidéo"), generation)
+        // HLS adaptive engine: HLS.js for Chrome/Firefox/Android, or native WebKit for iOS/Safari
+        if (!isVodChannel && isHls) {
+            if (typeof Hls !== "undefined" && Hls.isSupported()) {
+                try {
+                    destroyHlsInstance()
+                    const hls = new Hls({
+                        enableWorker: true,
+                        lowLatencyMode: true,
+                        backBufferLength: 60,
+                        maxBufferLength: 30,
+                        maxMaxBufferLength: 60,
+                        fragLoadingTimeOut: 20000,
+                        manifestLoadingTimeOut: 20000,
+                        levelLoadingTimeOut: 20000,
+                    })
+                    hlsInstance = hls
+                    hls.attachMedia(video)
+                    hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+                        hls.loadSource(streamUrl)
+                    })
+                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                        video.play()
+                            .then(() => started(generation))
+                            .catch((e) => {
+                                if (generation === playbackGeneration && e && e.name !== "AbortError") {
+                                    video.muted = true
+                                    video.play().then(() => started(generation)).catch(() => {})
                                 }
-                                break
+                            })
+                    })
+                    hls.on(Hls.Events.ERROR, (event, data) => {
+                        if (generation !== playbackGeneration) return
+                        if (data.fatal) {
+                            switch (data.type) {
+                                case Hls.ErrorTypes.NETWORK_ERROR:
+                                    console.warn("[HLS Network Error] Tentative de récupération...", data)
+                                    hls.startLoad()
+                                    break
+                                case Hls.ErrorTypes.MEDIA_ERROR:
+                                    console.warn("[HLS Media Error] Récupération buffer...", data)
+                                    hls.recoverMediaError()
+                                    break
+                                default:
+                                    destroyHlsInstance()
+                                    if (liveRetryCount < MAX_LIVE_RETRIES) {
+                                        scheduleLiveRetry(url, generation, "hls-fatal")
+                                    } else {
+                                        fail(new Error("Erreur de flux vidéo"), generation)
+                                    }
+                                    break
+                            }
                         }
-                    }
-                })
+                    })
+                    waitForStart(generation, false)
+                    return
+                } catch (err) {
+                    console.warn("Hls.js init failed, falling back to direct video:", err)
+                }
+            } else if (video.canPlayType && (video.canPlayType("application/vnd.apple.mpegurl") || video.canPlayType("application/x-mpegURL"))) {
+                // Native Apple WebKit HLS engine (Safari iOS, Chrome iOS, iPadOS)
+                console.log("[iOS Native HLS] Lecture native WebKit HLS pour:", streamUrl)
+                destroyHlsInstance()
+                video.src = streamUrl
+                try {
+                    video.load()
+                } catch (e) {}
                 waitForStart(generation, false)
+                video.play()
+                    .then(() => started(generation))
+                    .catch((err) => {
+                        if (generation !== playbackGeneration) return
+                        if (err && (err.name === "AbortError" || String(err.message || "").includes("interrupted"))) {
+                            return
+                        }
+                        if (err && err.name === "NotAllowedError") {
+                            video.muted = true
+                            video.play().then(() => started(generation)).catch((e) => {
+                                if (generation === playbackGeneration && e && e.name !== "AbortError") fail(e, generation)
+                            })
+                        } else if (liveRetryCount < MAX_LIVE_RETRIES) {
+                            scheduleLiveRetry(url, generation, "ios-native-hls-error")
+                        } else {
+                            fail(err, generation)
+                        }
+                    })
                 return
-            } catch (err) {
-                console.warn("Hls.js init failed, falling back to direct video:", err)
             }
         }
 
@@ -649,6 +679,9 @@ App.player = (function () {
 
         // Direct HTML5 Video for VOD (Movies & Series: MP4, MKV) and native HLS
         video.src = streamUrl
+        try {
+            video.load()
+        } catch {}
         if (resumeAt > 0) {
             video.addEventListener(
                 "loadedmetadata",

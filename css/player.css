@@ -641,13 +641,16 @@ body.playing {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    margin-top: 14px;
+    gap: 6px;
+    margin-top: 12px;
+    width: 100%;
+    max-width: 100%;
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
-    padding: 2px 0;
+    padding: 4px 6px;
+    box-sizing: border-box;
 }
 
 .vod-actions::-webkit-scrollbar {
@@ -659,16 +662,16 @@ body.playing {
     flex: 0 0 auto;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    height: 46px;
-    min-height: 46px;
-    max-height: 46px;
-    padding: 0 14px;
+    gap: 6px;
+    height: 42px;
+    min-height: 42px;
+    max-height: 42px;
+    padding: 0 11px;
     border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 12px;
+    border-radius: 10px;
     background: rgba(255, 255, 255, 0.06);
     color: var(--text-2);
-    font-size: 13px;
+    font-size: 12px;
     line-height: 1.1;
     box-sizing: border-box;
     white-space: nowrap;
@@ -691,15 +694,15 @@ body.playing {
 
 .vod-actions .vod-play {
     flex: 0 0 auto;
-    height: 46px;
-    min-height: 46px;
-    max-height: 46px;
-    padding: 0 22px;
+    height: 42px;
+    min-height: 42px;
+    max-height: 42px;
+    padding: 0 18px;
     border: 0;
-    border-radius: 12px;
+    border-radius: 10px;
     background: var(--grad-ink);
     color: var(--on-accent);
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 800;
     box-sizing: border-box;
     white-space: nowrap;
@@ -716,9 +719,9 @@ body.playing {
 
 .vod-action-icon {
     flex: none;
-    min-width: 20px;
+    min-width: 18px;
     color: var(--mint);
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 800;
     text-align: center;
     line-height: 1;
@@ -736,7 +739,7 @@ body.playing {
     flex-direction: column;
     align-items: flex-start;
     justify-content: center;
-    gap: 2px;
+    gap: 1px;
     min-width: 0;
     line-height: 1.1;
 }
@@ -753,7 +756,7 @@ body.playing {
 
 .vod-track-copy small {
     color: var(--text-3);
-    font-size: 9px;
+    font-size: 8px;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -761,7 +764,7 @@ body.playing {
 
 .vod-track-copy strong {
     color: inherit;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
 }
 
@@ -770,15 +773,15 @@ body.playing {
     flex: 0 0 auto;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    height: 46px;
-    min-height: 46px;
-    max-height: 46px;
-    padding: 0 14px;
+    gap: 6px;
+    height: 42px;
+    min-height: 42px;
+    max-height: 42px;
+    padding: 0 11px;
     border: 1px solid var(--line);
-    border-radius: 12px;
+    border-radius: 10px;
     color: var(--text-2);
-    font-size: 13px;
+    font-size: 12px;
     box-sizing: border-box;
     white-space: nowrap;
     vertical-align: middle;

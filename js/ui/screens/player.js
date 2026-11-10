@@ -511,7 +511,7 @@ App.uiScreens = App.uiScreens || {}
                                                       >
                                                   </span>`
                                                 : html`<span class="track-indicator unavailable">
-                                                      <span class="vod-action-icon">♫</span><span>Audio indisponible</span>
+                                                      <span class="vod-action-icon">♫</span><span class="vod-track-copy"><small>AUDIO</small><strong>Défaut</strong></span>
                                                   </span>`
                                       }
                                       ${
@@ -547,7 +547,7 @@ App.uiScreens = App.uiScreens || {}
                                                     >
                                                 </button>`
                                               : html`<span class="track-indicator unavailable">
-                                                    <span class="vod-action-icon">CC</span><span>Sous-titres indisponibles</span>
+                                                    <span class="vod-action-icon">CC</span><span class="vod-track-copy"><small>SOUS-TITRES</small><strong>Aucun</strong></span>
                                                 </span>`
                                       }
                                       <button
