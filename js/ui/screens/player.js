@@ -152,19 +152,17 @@ App.uiScreens = App.uiScreens || {}
             setSubtitleChoice(-1)
         }, [state.playing])
 
-        useEffect(() => {
-            function pulse() {
-                show()
+        function hide() {
+            setOverlay(false)
+            if (timer.current) {
+                clearTimeout(timer.current)
+                timer.current = null
             }
-            document.addEventListener("keydown", pulse)
-            window.addEventListener("pointermove", pulse, { passive: true })
-            window.addEventListener("pointerdown", pulse, { passive: true })
-            return function () {
-                document.removeEventListener("keydown", pulse)
-                window.removeEventListener("pointermove", pulse)
-                window.removeEventListener("pointerdown", pulse)
+            if (store.state.menuFocus && !store.isVod(store.state.playing && store.state.playing.channel)) {
+                store.setMenuFocus(false)
+                if (App.tv) App.tv.set("playerIdle", 0, 0)
             }
-        }, [])
+        }
 
         function show() {
             setOverlay(true)
@@ -177,6 +175,35 @@ App.uiScreens = App.uiScreens || {}
                 }
             }, OVERLAY_MS)
         }
+
+        function toggleOverlay() {
+            if (overlay || store.state.menuFocus) {
+                hide()
+            } else {
+                show()
+            }
+        }
+
+        useEffect(() => {
+            let lastX = 0
+            let lastY = 0
+            function onKey() {
+                show()
+            }
+            function onMouseMove(e) {
+                if (Math.abs(e.clientX - lastX) > 4 || Math.abs(e.clientY - lastY) > 4) {
+                    lastX = e.clientX
+                    lastY = e.clientY
+                    show()
+                }
+            }
+            document.addEventListener("keydown", onKey)
+            window.addEventListener("mousemove", onMouseMove, { passive: true })
+            return function () {
+                document.removeEventListener("keydown", onKey)
+                window.removeEventListener("mousemove", onMouseMove)
+            }
+        }, [])
 
         const channel = state.playing ? state.playing.channel : null
         if (!channel) return null
@@ -206,8 +233,8 @@ App.uiScreens = App.uiScreens || {}
             class=${`screen player${player.hardware() ? " hw" : ""}`}
             id="screen-player"
             onClick=${function (e) {
-                if (e.target && !e.target.closest("button, input, .vod-controls, .ov-actions")) {
-                    show()
+                if (e.target && !e.target.closest("button, input, .vod-controls, .ov-actions, .player-top-bar, .fs-stats-hud")) {
+                    toggleOverlay()
                 }
             }}
         >
@@ -484,7 +511,7 @@ App.uiScreens = App.uiScreens || {}
                                                       >
                                                   </span>`
                                                 : html`<span class="track-indicator unavailable">
-                                                      Audio indisponible
+                                                      <span class="vod-action-icon">♫</span><span>Audio indisponible</span>
                                                   </span>`
                                       }
                                       ${
@@ -520,7 +547,7 @@ App.uiScreens = App.uiScreens || {}
                                                     >
                                                 </button>`
                                               : html`<span class="track-indicator unavailable">
-                                                    Sous-titres indisponibles
+                                                    <span class="vod-action-icon">CC</span><span>Sous-titres indisponibles</span>
                                                 </span>`
                                       }
                                       <button

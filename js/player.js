@@ -320,10 +320,13 @@ App.player = (function () {
         if (handlers.onError) handlers.onError(describe(error))
     }
 
+    let vodRetryCount = 0
+
     function started(generation) {
         if (generation !== undefined && generation !== playbackGeneration) return
         clearStart()
         clearLiveRetry()
+        vodRetryCount = 0
         setTimeout(() => {
             if (generation === playbackGeneration && playbackStarted) {
                 liveRetryCount = 0
@@ -340,21 +343,43 @@ App.player = (function () {
         }
     }
 
-    function waitForStart(generation) {
+    function waitForStart(generation, isVodChannel) {
         clearStart()
+        const timeoutMs = isVodChannel ? 35000 : START_TIMEOUT_MS
         startTimer = setTimeout(() => {
             startTimer = null
-            if (activeUrl && liveRetryCount < MAX_LIVE_RETRIES) {
+            if (isVodChannel && vodRetryCount < 3) {
+                vodRetryCount++
+                console.warn(`[VOD Startup Timeout] Reconnexion automatique (${vodRetryCount}/3)...`)
+                if (generation === playbackGeneration && activeUrl) {
+                    playWithVideo(activeUrl, 0, generation)
+                }
+                return
+            }
+            if (activeUrl && !isVodChannel && liveRetryCount < MAX_LIVE_RETRIES) {
                 scheduleLiveRetry(activeUrl, generation, "startup-timeout")
             } else {
-                fail({ message: "The channel is not responding" }, generation)
+                fail({ message: "Le flux vidéo ne répond pas" }, generation)
             }
-        }, START_TIMEOUT_MS)
+        }, timeoutMs)
     }
 
     let tsPlayer = null
+    let hlsInstance = null
+
+    function destroyHlsInstance() {
+        if (hlsInstance) {
+            try {
+                hlsInstance.stopLoad()
+                hlsInstance.detachMedia()
+                hlsInstance.destroy()
+            } catch (e) {}
+            hlsInstance = null
+        }
+    }
 
     function destroyTsPlayer() {
+        destroyHlsInstance()
         if (tsPlayer) {
             try {
                 tsPlayer.pause()
@@ -434,8 +459,14 @@ App.player = (function () {
         }
     }
 
-    function proxifyStream(rawUrl) {
+    function proxifyStream(rawUrl, isVod) {
         if (!rawUrl) return rawUrl
+        if (rawUrl.startsWith("/")) {
+            if (typeof window !== "undefined" && window.location && window.location.origin) {
+                return `${window.location.origin}${rawUrl}`
+            }
+            return rawUrl
+        }
         if (typeof window !== "undefined" && window.location) {
             const host = window.location.hostname
             const port = window.location.port
@@ -448,7 +479,8 @@ App.player = (function () {
                 port === "8090" ||
                 host.includes("onrender.com")
             if (isLocal && /^https?:\/\//i.test(rawUrl) && !rawUrl.startsWith(window.location.origin)) {
-                return `${window.location.origin}/proxy?stream=1&url=${encodeURIComponent(rawUrl)}`
+                const streamParam = isVod ? "stream=0" : "stream=1"
+                return `${window.location.origin}/proxy?${streamParam}&url=${encodeURIComponent(rawUrl)}`
             }
         }
         return rawUrl
@@ -467,16 +499,77 @@ App.player = (function () {
         video.muted = false
         video.volume = 1.0
 
-        const streamUrl = proxifyStream(url)
         const isVodChannel =
             (App.store &&
                 App.store.state &&
                 App.store.state.playing &&
                 App.store.isVod &&
                 App.store.isVod(App.store.state.playing.channel)) ||
-            /\.(mp4|mkv|avi|mov|webm)(\?|$)/i.test(url)
+            /\.(mp4|mkv|avi|mov|webm)(\?|$)/i.test(url) ||
+            /\/movie\//i.test(url) ||
+            /\/series\//i.test(url)
 
-        const isHls = /\.m3u8(\?|$)/i.test(url)
+        const streamUrl = proxifyStream(url, isVodChannel)
+        const isHls = /\.m3u8(\?|$)/i.test(url) || /yacine\/play/i.test(url)
+
+        // HLS.js adaptive engine for live playlists and Yacine TV
+        if (!isVodChannel && isHls && typeof Hls !== "undefined" && Hls.isSupported()) {
+            try {
+                destroyHlsInstance()
+                const hls = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                    backBufferLength: 60,
+                    maxBufferLength: 30,
+                    maxMaxBufferLength: 60,
+                    fragLoadingTimeOut: 20000,
+                    manifestLoadingTimeOut: 20000,
+                    levelLoadingTimeOut: 20000,
+                })
+                hlsInstance = hls
+                hls.attachMedia(video)
+                hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+                    hls.loadSource(streamUrl)
+                })
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    video.play()
+                        .then(() => started(generation))
+                        .catch((e) => {
+                            if (generation === playbackGeneration && e && e.name !== "AbortError") {
+                                video.muted = true
+                                video.play().then(() => started(generation)).catch(() => {})
+                            }
+                        })
+                })
+                hls.on(Hls.Events.ERROR, (event, data) => {
+                    if (generation !== playbackGeneration) return
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                console.warn("[HLS Network Error] Tentative de récupération...", data)
+                                hls.startLoad()
+                                break
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                console.warn("[HLS Media Error] Récupération buffer...", data)
+                                hls.recoverMediaError()
+                                break
+                            default:
+                                destroyHlsInstance()
+                                if (liveRetryCount < MAX_LIVE_RETRIES) {
+                                    scheduleLiveRetry(url, generation, "hls-fatal")
+                                } else {
+                                    fail(new Error("Erreur de flux vidéo"), generation)
+                                }
+                                break
+                        }
+                    }
+                })
+                waitForStart(generation, false)
+                return
+            } catch (err) {
+                console.warn("Hls.js init failed, falling back to direct video:", err)
+            }
+        }
 
         // Live MPEG-TS playback via mpegts.js (buffer 16MB + anti-coupure zero-cut)
         if (!isVodChannel && !isHls && typeof mpegts !== "undefined" && mpegts.isSupported()) {
@@ -528,7 +621,7 @@ App.player = (function () {
                         fail(new Error("Erreur de flux vidéo"), generation)
                     }
                 })
-                waitForStart(generation)
+                waitForStart(generation, false)
                 tsPlayer.load()
                 video.play()
                     .then(() => started(generation))
@@ -554,7 +647,7 @@ App.player = (function () {
             }
         }
 
-        // Direct HTML5 Video for VOD (Movies & Series: MP4, MKV) and HLS
+        // Direct HTML5 Video for VOD (Movies & Series: MP4, MKV) and native HLS
         video.src = streamUrl
         if (resumeAt > 0) {
             video.addEventListener(
@@ -571,8 +664,18 @@ App.player = (function () {
                 { once: true },
             )
         }
-        const onVideoError = () => {
+        const onVideoError = (ev) => {
             if (generation === playbackGeneration) {
+                if (isVodChannel && vodRetryCount < 3) {
+                    vodRetryCount++
+                    console.warn(`[VOD Retry] Reconnexion automatique (${vodRetryCount}/3)...`)
+                    setTimeout(() => {
+                        if (generation === playbackGeneration) {
+                            playWithVideo(url, resumeAt, generation)
+                        }
+                    }, 800)
+                    return
+                }
                 if (!isVodChannel && liveRetryCount < MAX_LIVE_RETRIES) {
                     scheduleLiveRetry(url, generation, "html5-video-error")
                 } else {
@@ -581,7 +684,7 @@ App.player = (function () {
             }
         }
         video.addEventListener("error", onVideoError, { once: true })
-        waitForStart(generation)
+        waitForStart(generation, isVodChannel)
         video
             .play()
             .then(() => started(generation))
@@ -746,6 +849,34 @@ App.player = (function () {
                 canSelectSubtitle: false,
             }
         const tracks = []
+        if (hlsInstance) {
+            try {
+                if (hlsInstance.audioTracks && hlsInstance.audioTracks.length) {
+                    hlsInstance.audioTracks.forEach((at, i) => {
+                        tracks.push({
+                            type: "AUDIO",
+                            index: i,
+                            extra_info: {
+                                language: at.lang || "",
+                                label: at.name || at.lang || `Audio ${i + 1}`,
+                            },
+                        })
+                    })
+                }
+                if (hlsInstance.subtitleTracks && hlsInstance.subtitleTracks.length) {
+                    hlsInstance.subtitleTracks.forEach((st, i) => {
+                        tracks.push({
+                            type: "SUBTITLE",
+                            index: i,
+                            extra_info: {
+                                language: st.lang || "",
+                                label: st.name || st.lang || `Sous-titre ${i + 1}`,
+                            },
+                        })
+                    })
+                }
+            } catch {}
+        }
         try {
             const audioTracks = video.audioTracks
             for (let i = 0; audioTracks && i < audioTracks.length; i++) {
@@ -854,6 +985,20 @@ App.player = (function () {
             } catch (error) {
                 console.error("AVPlay track selection failed:", error)
                 return false
+            }
+        }
+        if (hlsInstance) {
+            if (type === "AUDIO") {
+                try {
+                    hlsInstance.audioTrack = index
+                    return true
+                } catch {}
+            }
+            if (type === "SUBTITLE") {
+                try {
+                    hlsInstance.subtitleTrack = index
+                    return true
+                } catch {}
             }
         }
         if (!video) return false

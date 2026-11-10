@@ -316,8 +316,15 @@ App.store = (function () {
         const str = (typeof name === "string" ? name : name.name || "").trim().toLowerCase()
         if (!str) return 3
 
-        // Priority -2: Pinned beIN SPORTS
-        if (str === "⚽ bein sports" || str === "bein sports" || str === "__bein__" || str.includes("bein sport")) return -2
+        // Priority -2: Pinned beIN SPORTS (Yacine TV)
+        if (
+            str.includes("bein sport") ||
+            str === "⚽ bein sports (yacine tv)" ||
+            str === "⚽ bein sports" ||
+            str === "bein sports" ||
+            str === "__bein__"
+        )
+            return -2
 
         // Priority -1: Special Favorites / Recents
         if (str.startsWith("⭐") || str.startsWith("🕒") || str.includes("favori") || str.includes("recent") || str.includes("récent")) return -1
@@ -393,30 +400,34 @@ App.store = (function () {
     }
 
     const PERMANENT_BEIN_CONFIGS = [
+        // beIN SPORTS Bouquet Yacine TV (Flux directs Anti-Coupure HLS Multi-Qualités)
+        { id: "yacine_bein_1", name: "beIN SPORTS 1 HD", url: "/yacine/play.m3u8?id=6217599430189993723&q=1080p", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "yacine_bein_2", name: "beIN SPORTS 2 HD", url: "/yacine/play.m3u8?id=6217599430191304124&q=1080p", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "yacine_bein_3", name: "beIN SPORTS 3 HD", url: "/yacine/play.m3u8?id=6217599430187956457&q=1080p", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "yacine_bein_4", name: "beIN SPORTS 4 HD", url: "/yacine/play.m3u8?id=6217599430189092794&q=1080p", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "yacine_bein_5", name: "beIN SPORTS 5 HD", url: "/yacine/play.m3u8?id=6217599430194016479&q=1080p", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "yacine_bein_6", name: "beIN SPORTS 6 HD", url: "/yacine/play.m3u8?id=6217599430194998784&q=1080p", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "yacine_bein_7", name: "beIN SPORTS 7 HD", url: "/yacine/play.m3u8?id=6217599430192788662&q=1080p", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "yacine_bein_8", name: "beIN SPORTS 8 HD", url: "/yacine/play.m3u8?id=6217599430193374805&q=1080p", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "yacine_bein_9", name: "beIN SPORTS 9 HD", url: "/yacine/play.m3u8?id=6217599430198106168&q=1080p", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "yacine_bein_news", name: "beIN SPORTS NEWS HD", url: "/yacine/play.m3u8?id=6217599430202494892&q=1080p", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "yacine_bein_xtra1", name: "beIN SPORTS XTRA 1", url: "/yacine/play.m3u8?id=6217599430220838088&q=1080p", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "yacine_bein_xtra2", name: "beIN SPORTS XTRA 2", url: "/yacine/play.m3u8?id=6217599430217533349&q=1080p", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "yacine_bein_xtra3", name: "beIN SPORTS XTRA 3", url: "/yacine/play.m3u8?id=6217599430218118150&q=1080p", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "yacine_bein_3fr", name: "beIN SPORTS 3 FR (Yacine Multi)", url: "/yacine/play.m3u8?id=6217599430197030425&q=1080p", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
+        { id: "yacine_bein_en1", name: "beIN SPORTS English 1 HD", url: "/yacine/play.m3u8?id=6217599430283631330&q=1080p", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "yacine_bein_en2", name: "beIN SPORTS English 2 HD", url: "/yacine/play.m3u8?id=6217599430280562883&q=1080p", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
         // French beIN bouquet
-        { id: "perm_bein_fr_1", name: "beIN SPORTS 1 HD", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
-        { id: "perm_bein_fr_2", name: "beIN SPORTS 2 HD", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
-        { id: "perm_bein_fr_3", name: "beIN SPORTS 3 HD", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
-        { id: "perm_bein_fr_max4", name: "beIN SPORTS MAX 4", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
-        { id: "perm_bein_fr_max5", name: "beIN SPORTS MAX 5", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
-        { id: "perm_bein_fr_max6", name: "beIN SPORTS MAX 6", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
-        { id: "perm_bein_fr_max7", name: "beIN SPORTS MAX 7", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
-        { id: "perm_bein_fr_max8", name: "beIN SPORTS MAX 8", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
-        { id: "perm_bein_fr_max9", name: "beIN SPORTS MAX 9", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
-        { id: "perm_bein_fr_max10", name: "beIN SPORTS MAX 10", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
-        // Arabic beIN bouquet
-        { id: "perm_bein_ar_1", name: "beIN SPORTS 1 HD (AR)", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
-        { id: "perm_bein_ar_2", name: "beIN SPORTS 2 HD (AR)", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
-        { id: "perm_bein_ar_3", name: "beIN SPORTS 3 HD (AR)", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
-        { id: "perm_bein_ar_4", name: "beIN SPORTS 4 HD (AR)", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
-        { id: "perm_bein_ar_5", name: "beIN SPORTS 5 HD (AR)", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
-        { id: "perm_bein_ar_6", name: "beIN SPORTS 6 HD (AR)", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
-        { id: "perm_bein_ar_7", name: "beIN SPORTS 7 HD (AR)", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
-        { id: "perm_bein_ar_8", name: "beIN SPORTS 8 HD (AR)", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
-        { id: "perm_bein_ar_9", name: "beIN SPORTS 9 HD (AR)", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
-        { id: "perm_bein_ar_news", name: "beIN SPORTS NEWS (AR)", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
-        { id: "perm_bein_ar_xtra1", name: "beIN SPORTS XTRA 1 (AR)", url: "https://bein-xtra-bein.amagi.tv/playlist.m3u8", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
-        { id: "perm_bein_ar_xtra2", name: "beIN SPORTS XTRA 2 (AR)", url: "https://d9ssxzmclhfo4.cloudfront.net/bein_sports.m3u8", group: "⚽ beIN SPORTS", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/qatar/bein-sports-1.png" },
+        { id: "perm_bein_fr_1", name: "beIN SPORTS 1 HD (FR)", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
+        { id: "perm_bein_fr_2", name: "beIN SPORTS 2 HD (FR)", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
+        { id: "perm_bein_fr_3", name: "beIN SPORTS 3 HD (FR)", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
+        { id: "perm_bein_fr_max4", name: "beIN SPORTS MAX 4", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
+        { id: "perm_bein_fr_max5", name: "beIN SPORTS MAX 5", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
+        { id: "perm_bein_fr_max6", name: "beIN SPORTS MAX 6", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
+        { id: "perm_bein_fr_max7", name: "beIN SPORTS MAX 7", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
+        { id: "perm_bein_fr_max8", name: "beIN SPORTS MAX 8", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
+        { id: "perm_bein_fr_max9", name: "beIN SPORTS MAX 9", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
+        { id: "perm_bein_fr_max10", name: "beIN SPORTS MAX 10", group: "⚽ beIN SPORTS (Yacine TV)", logo: "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png" },
     ]
 
     function getPermanentBeinChannels(listId) {
@@ -441,21 +452,19 @@ App.store = (function () {
         const merged = []
         const seenNorm = Object.create(null)
 
-        // 1. Add all server beIN channels
-        serverChans.forEach((ch) => {
-            const norm = normalizeChannelName(ch.name)
-            if (norm) seenNorm[norm] = true
-            merged.push(ch)
-        })
-
-        // 2. Add permanent channels that are not already matched on server
+        // 1. Add permanent anti-coupure Yacine channels
         permChans.forEach((perm) => {
             const norm = normalizeChannelName(perm.name)
+            if (norm) seenNorm[norm] = true
+            merged.push(perm)
+        })
+
+        // 2. Add server beIN channels
+        serverChans.forEach((ch) => {
+            const norm = normalizeChannelName(ch.name)
             if (!norm || !seenNorm[norm]) {
-                const matchedServer = serverChans.find((sc) => normalizeChannelName(sc.name) === norm)
-                if (!matchedServer) {
-                    merged.push(perm)
-                }
+                seenNorm[norm] = true
+                merged.push(ch)
             }
         })
 
@@ -2808,9 +2817,9 @@ App.store = (function () {
 
         if (mediaType === "live") {
             const beinList = getBeinChannelsList(activeList ? activeList.id : null)
-            const beinCount = (beinList && beinList.length) || 22
+            const beinCount = (beinList && beinList.length) || 26
             specialRows.unshift({
-                name: "⚽ beIN SPORTS",
+                name: "⚽ beIN SPORTS (Yacine TV)",
                 id: "__bein__",
                 special: "bein",
                 count: beinCount,
@@ -2836,7 +2845,7 @@ App.store = (function () {
             const filteredCats = (state.parentalLocked
                 ? catList.filter((cat) => !isAdultCategoryName(cat.name))
                 : catList.slice()
-            ).filter((cat) => cat.id !== "__bein__" && cat.name !== "⚽ beIN SPORTS")
+            ).filter((cat) => cat.id !== "__bein__" && !String(cat.name || "").includes("beIN SPORTS"))
             const sortedCatList = filteredCats.sort((a, b) => compareCategories(a.name, b.name))
             const regularRows = sortedCatList.map((cat) => ({
                 name: cat.name,
@@ -2872,7 +2881,7 @@ App.store = (function () {
 
         const needle = searchOf("tv").trim().toLowerCase()
         const names = Object.keys(counts)
-            .filter((name) => name !== "⚽ beIN SPORTS")
+            .filter((name) => !String(name || "").includes("beIN SPORTS"))
             .sort(compareCategories)
         const regularRows = names.map((name) => {
             return { name, count: counts[name], sources: Object.keys(lists[name]).length }
@@ -2956,7 +2965,13 @@ App.store = (function () {
             pool = state.favorites.filter((c) => matchesMedia(c, state.mediaType))
         } else if (state.catName === "🕒 Récents") {
             pool = state.recent.filter((c) => matchesMedia(c, state.mediaType))
-        } else if (state.catName === "⚽ beIN SPORTS" || state.catName === "beIN SPORTS" || state.catName === "__bein__") {
+        } else if (
+            state.catName === "⚽ beIN SPORTS (Yacine TV)" ||
+            state.catName === "⚽ beIN SPORTS" ||
+            state.catName === "beIN SPORTS" ||
+            state.catName === "__bein__" ||
+            /bein\s*sports/i.test(state.catName)
+        ) {
             pool = getBeinChannelsList(scope)
         } else if (globalNeedle && state.mediaType === "live") {
             // In Android ZapActivity, the top search bar searches across ALL loaded channels or current category

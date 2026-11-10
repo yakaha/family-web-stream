@@ -563,7 +563,7 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
                     if (store.state.screen === "player") {
                         store.playFailed(message)
                     } else if (store.state.screen === "tv") {
-                        store.notify(`Aperçu impossible · ${message}`)
+                        console.warn("[TV Preview Error]:", message)
                     }
                 },
                 onResumeError: function () {

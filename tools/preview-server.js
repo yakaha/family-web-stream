@@ -85,18 +85,25 @@ function proxyRequest(req, res, targetUrl) {
         return
     }
 
+    const isVodReq =
+        req.url.indexOf("stream=0") !== -1 ||
+        !!req.headers["range"] ||
+        /\.(mp4|mkv|avi|mov|webm)(\?|$)/i.test(targetUrl) ||
+        /\/movie\//i.test(targetUrl) ||
+        /\/series\//i.test(targetUrl)
+
+    // Only continuous infinite streams (like raw MPEG-TS direct feeds) kill previous stream on channel switch.
+    // HLS playlists (.m3u8), segments (.ts, .php), and VOD range requests MUST NEVER kill active connections!
+    const isChunkOrPlaylist =
+        /\.m3u8(\?|$)/i.test(targetUrl) ||
+        /\.ts(\?|$)/i.test(targetUrl) ||
+        targetUrl.includes(".php") ||
+        isVodReq
+
     const isLiveStream =
-        req.url.indexOf("stream=1") !== -1 ||
-        req.headers["x-stream-request"] === "1" ||
-        (!req.headers["range"] &&
-            !targetUrl.includes(".php") &&
-            (/\.ts(\?|$)/i.test(targetUrl) ||
-                /\.m3u8(\?|$)/i.test(targetUrl) ||
-                /\/live\//i.test(targetUrl) ||
-                /\/play\//i.test(targetUrl) ||
-                /\/ch\//i.test(targetUrl) ||
-                /stream=/i.test(targetUrl) ||
-                /:\d{4,5}\//i.test(targetUrl)))
+        !isVodReq &&
+        !isChunkOrPlaylist &&
+        (req.url.indexOf("stream=1") !== -1 || req.headers["x-stream-request"] === "1")
 
     const clientKey = getClientKey(req)
     if (isLiveStream && !req._isRedirect) {
@@ -116,10 +123,20 @@ function proxyRequest(req, res, targetUrl) {
 
     const client = parsed.protocol === "https:" ? https : http
 
+    const isModernWebStream =
+        targetUrl.includes("yacine") ||
+        targetUrl.includes("redirect") ||
+        targetUrl.includes("cloudarven") ||
+        targetUrl.includes("dami") ||
+        targetUrl.includes("wedd48c") ||
+        targetUrl.includes("dembed")
+
     const headers = {
         "User-Agent":
             req.headers["x-target-user-agent"] ||
-            "Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3",
+            (isModernWebStream
+                ? "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                : "Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3"),
         "Accept": "*/*",
     }
     if (req.headers["range"]) {
@@ -130,6 +147,8 @@ function proxyRequest(req, res, targetUrl) {
     }
     if (req.headers["x-target-referer"]) {
         headers["Referer"] = req.headers["x-target-referer"]
+    } else if (isModernWebStream && !headers["Referer"]) {
+        headers["Referer"] = "https://yacine.website/"
     }
     if (req.headers["authorization"]) {
         headers["Authorization"] = req.headers["authorization"]
@@ -243,6 +262,172 @@ function proxyRequest(req, res, targetUrl) {
     req.pipe(proxyReq)
 }
 
+const yacineStreamCache = new Map()
+const yacineLastValidPlaylist = new Map()
+
+function fetchYacineUrl(targetUrl, referer = "https://yacine.website/") {
+    return new Promise((resolve, reject) => {
+        const parsed = new URL(targetUrl)
+        const client = parsed.protocol === "https:" ? https : http
+        const req = client.get(
+            targetUrl,
+            {
+                headers: {
+                    "User-Agent":
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    Referer: referer,
+                    Accept: "*/*",
+                },
+                timeout: 15000,
+            },
+            (res) => {
+                if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location) {
+                    let loc = res.headers.location
+                    if (!/^https?:\/\//i.test(loc)) loc = new URL(loc, targetUrl).toString()
+                    return fetchYacineUrl(loc, referer).then(resolve).catch(reject)
+                }
+                let data = ""
+                res.on("data", (chunk) => (data += chunk))
+                res.on("end", () => {
+                    if (res.statusCode >= 200 && res.statusCode < 400) {
+                        resolve({ statusCode: res.statusCode, body: data, headers: res.headers })
+                    } else {
+                        reject(new Error("HTTP " + res.statusCode))
+                    }
+                })
+            }
+        )
+        req.on("error", reject)
+        req.on("timeout", () => {
+            req.destroy()
+            reject(new Error("Request timeout"))
+        })
+    })
+}
+
+async function handleYacineStream(req, res) {
+    try {
+        const u = new URL(req.url, "http://127.0.0.1")
+        const id = u.searchParams.get("id") || "6217599430189993723"
+        const qualityPref = (u.searchParams.get("q") || "1080p").toLowerCase()
+        const now = Date.now()
+
+        let meta = yacineStreamCache.get(id)
+        if (!meta || now - meta.time > 180000) {
+            const apiRes = await fetchYacineUrl(`https://yacine.website/?get_channel_stream=${encodeURIComponent(id)}`)
+            const parsed = JSON.parse(apiRes.body)
+            if (parsed.status !== "success") {
+                throw new Error("Yacine API status not success")
+            }
+            meta = { parsed, time: now }
+            yacineStreamCache.set(id, meta)
+        }
+
+        const qualities = meta.parsed.qualities || []
+        let chosenUrl = ""
+        for (const q of qualities) {
+            const qLower = (q.name || "").toLowerCase()
+            if (qLower.includes(qualityPref)) {
+                chosenUrl = q.url
+                break
+            }
+        }
+        if (!chosenUrl && qualities.length > 0) {
+            chosenUrl = qualities[0].url
+        }
+        if (!chosenUrl) {
+            chosenUrl = meta.parsed.url || ""
+        }
+        if (!chosenUrl) {
+            throw new Error("No stream URL found in Yacine metadata")
+        }
+
+        const fullPlayUrl = chosenUrl.startsWith("http")
+            ? chosenUrl
+            : `https://yacine.website${chosenUrl.startsWith("/") ? "" : "/"}${chosenUrl}`
+
+        let m3u8Res
+        try {
+            m3u8Res = await fetchYacineUrl(fullPlayUrl, "https://yacine.website/")
+        } catch (fetchErr) {
+            yacineStreamCache.delete(id)
+            const retryApi = await fetchYacineUrl(`https://yacine.website/?get_channel_stream=${encodeURIComponent(id)}`)
+            const retryParsed = JSON.parse(retryApi.body)
+            const freshUrl =
+                (retryParsed.qualities && retryParsed.qualities[0] && retryParsed.qualities[0].url) || retryParsed.url
+            if (freshUrl) {
+                const freshFull = freshUrl.startsWith("http")
+                    ? freshUrl
+                    : `https://yacine.website${freshUrl.startsWith("/") ? "" : "/"}${freshUrl}`
+                m3u8Res = await fetchYacineUrl(freshFull, "https://yacine.website/")
+            } else {
+                throw fetchErr
+            }
+        }
+
+        const rawM3u8 = m3u8Res.body || ""
+        if (!rawM3u8.includes("#EXTM3U") && !rawM3u8.includes("#EXTINF")) {
+            const fallback = yacineLastValidPlaylist.get(id)
+            if (fallback) {
+                res.writeHead(200, {
+                    "Content-Type": "application/vnd.apple.mpegurl; charset=utf-8",
+                    "Access-Control-Allow-Origin": "*",
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                })
+                res.end(fallback)
+                return
+            }
+            throw new Error("Invalid M3U8 content received from Yacine")
+        }
+
+        const lines = rawM3u8.split("\n")
+        const rewritten = []
+        for (let line of lines) {
+            const trimmed = line.trim()
+            if (!trimmed) continue
+            if (trimmed.startsWith("#")) {
+                rewritten.push(line)
+            } else {
+                let chunkUrl = trimmed
+                if (trimmed.startsWith("/")) {
+                    chunkUrl = `https://yacine.website${trimmed}`
+                } else if (!trimmed.startsWith("http")) {
+                    chunkUrl = `https://yacine.website/${trimmed}`
+                }
+                const proxiedChunk = `/proxy?stream=1&ref=${encodeURIComponent("https://yacine.website/")}&url=${encodeURIComponent(chunkUrl)}`
+                rewritten.push(proxiedChunk)
+            }
+        }
+
+        const finalPlaylist = rewritten.join("\n")
+        yacineLastValidPlaylist.set(id, finalPlaylist)
+
+        res.writeHead(200, {
+            "Content-Type": "application/vnd.apple.mpegurl; charset=utf-8",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+        })
+        res.end(finalPlaylist)
+    } catch (err) {
+        console.warn("[Yacine Stream Error]:", err.message)
+        const fallback = yacineLastValidPlaylist.get(req.url)
+        if (fallback) {
+            res.writeHead(200, {
+                "Content-Type": "application/vnd.apple.mpegurl; charset=utf-8",
+                "Access-Control-Allow-Origin": "*",
+            })
+            res.end(fallback)
+            return
+        }
+        res.writeHead(502, {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+        })
+        res.end(JSON.stringify({ error: "Flux Yacine temporairement indisponible", details: err.message }))
+    }
+}
+
 const server = http.createServer((req, res) => {
     res.setHeader("Access-Control-Allow-Origin", "*")
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, HEAD")
@@ -265,14 +450,33 @@ const server = http.createServer((req, res) => {
         return
     }
 
+    if (req.url.startsWith("/yacine/play.m3u8") || req.url.startsWith("/yacine/live")) {
+        handleYacineStream(req, res)
+        return
+    }
+
     if (req.url.startsWith("/proxy")) {
-        const urlParamIdx = req.url.indexOf("url=")
-        if (urlParamIdx === -1) {
+        let targetUrl = ""
+        let refParam = ""
+        try {
+            const u = new URL(req.url, "http://127.0.0.1")
+            refParam = u.searchParams.get("ref") || ""
+            targetUrl = u.searchParams.get("url") || ""
+        } catch {}
+        if (!targetUrl) {
+            const urlParamIdx = req.url.indexOf("url=")
+            if (urlParamIdx !== -1) {
+                targetUrl = decodeURIComponent(req.url.slice(urlParamIdx + 4))
+            }
+        }
+        if (!targetUrl) {
             res.writeHead(400, { "Content-Type": "text/plain" })
             res.end("Missing target url")
             return
         }
-        const targetUrl = decodeURIComponent(req.url.slice(urlParamIdx + 4))
+        if (refParam) {
+            req.headers["x-target-referer"] = refParam
+        }
         proxyRequest(req, res, targetUrl)
         return
     }

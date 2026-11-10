@@ -1,4 +1,4 @@
-const CACHE_NAME = "fws-shell-v5"
+const CACHE_NAME = "fws-shell-v6"
 
 const STATIC_ASSETS = [
     "./",
@@ -26,6 +26,7 @@ const STATIC_ASSETS = [
     "./vendor/hooks.umd.js",
     "./vendor/htm.umd.js",
     "./vendor/mpegts.js",
+    "./vendor/hls.min.js",
     "./js/api.js",
     "./js/firebase.js",
     "./js/player.js",
