@@ -74,6 +74,180 @@ function killActiveLiveStream(clientKey) {
         }
         clientLiveStreams.clear()
     }
+    // Also immediately destroy any shared stream with 0 active clients
+    for (const [url, shared] of sharedLiveStreams.entries()) {
+        if (!shared.clients || shared.clients.size === 0) {
+            shared.destroy()
+        }
+    }
+}
+
+// Shared upstream live broadcaster: distributes 1 single upstream connection to N clients
+const sharedLiveStreams = new Map()
+
+class SharedLiveStream {
+    constructor(targetUrl, options, client) {
+        this.targetUrl = targetUrl
+        this.options = options
+        this.client = client
+        this.clients = new Set()
+        this.proxyReq = null
+        this.proxyRes = null
+        this.headers = null
+        this.statusCode = 200
+        this.patPmtPackets = null
+        this.recentChunks = []
+        this.recentBytes = 0
+        this.destroyTimer = null
+        this.isDestroyed = false
+        this.start()
+    }
+
+    start() {
+        this.proxyReq = this.client.request(this.options, (proxyRes) => {
+            this.proxyRes = proxyRes
+            this.statusCode = proxyRes.statusCode
+
+            if ([301, 302, 303, 307, 308].includes(proxyRes.statusCode) && proxyRes.headers.location) {
+                let nextUrl = proxyRes.headers.location
+                if (!/^https?:\/\//i.test(nextUrl)) {
+                    nextUrl = new URL(nextUrl, this.targetUrl).toString()
+                }
+                this.targetUrl = nextUrl
+                try {
+                    const nextParsed = new URL(nextUrl)
+                    this.options.hostname = nextParsed.hostname
+                    this.options.port = nextParsed.port || (nextParsed.protocol === "https:" ? 443 : 80)
+                    this.options.path = nextParsed.pathname + nextParsed.search
+                    this.client = nextParsed.protocol === "https:" ? https : http
+                    this.start()
+                } catch (e) {
+                    console.error("[Shared Stream Redirect Error]:", e.message)
+                }
+                return
+            }
+
+            const outHeaders = Object.assign({}, proxyRes.headers)
+            outHeaders["access-control-allow-origin"] = "*"
+            outHeaders["access-control-allow-methods"] = "GET, POST, OPTIONS, HEAD"
+            outHeaders["access-control-allow-headers"] = "*"
+            outHeaders["access-control-expose-headers"] =
+                "Content-Length, Content-Range, Accept-Ranges, Content-Type"
+            outHeaders["cache-control"] = "no-cache, no-store, must-revalidate"
+            outHeaders["pragma"] = "no-cache"
+            this.headers = outHeaders
+
+            for (const clientRes of this.clients) {
+                if (!clientRes.headersSent) {
+                    clientRes.writeHead(this.statusCode, this.headers)
+                }
+            }
+
+            proxyRes.on("data", (chunk) => {
+                if (this.isDestroyed) return
+
+                // Extract PAT/PMT packets to send to any new client joining the stream
+                if (!this.patPmtPackets && chunk.length >= 376) {
+                    for (let i = 0; i <= chunk.length - 188; i += 188) {
+                        if (chunk[i] === 0x47) {
+                            const pid = ((chunk[i + 1] & 0x1f) << 8) | chunk[i + 2]
+                            if (pid === 0) {
+                                this.patPmtPackets = Buffer.from(chunk.subarray(i, Math.min(chunk.length, i + 188 * 3)))
+                                break
+                            }
+                        }
+                    }
+                }
+
+                // Keep rolling buffer of recent ~256KB
+                this.recentChunks.push(chunk)
+                this.recentBytes += chunk.length
+                while (this.recentBytes > 256 * 1024 && this.recentChunks.length > 1) {
+                    const dropped = this.recentChunks.shift()
+                    this.recentBytes -= dropped.length
+                }
+
+                for (const clientRes of this.clients) {
+                    try {
+                        clientRes.write(chunk)
+                    } catch (e) {
+                        this.removeClient(clientRes)
+                    }
+                }
+            })
+
+            proxyRes.on("end", () => {
+                this.destroy()
+            })
+
+            proxyRes.on("error", (err) => {
+                console.warn("[Shared Stream Error]:", err.message)
+                this.destroy()
+            })
+        })
+
+        this.proxyReq.on("socket", (sock) => {
+            sock.setNoDelay(true)
+            sock.setTimeout(0)
+            sock.setKeepAlive(true, 10000)
+        })
+
+        this.proxyReq.on("error", (err) => {
+            console.error("[Shared Stream ProxyReq Error]:", err.message)
+            this.destroy()
+        })
+
+        this.proxyReq.end()
+    }
+
+    addClient(req, res) {
+        if (this.destroyTimer) {
+            clearTimeout(this.destroyTimer)
+            this.destroyTimer = null
+        }
+        this.clients.add(res)
+
+        if (this.headers && !res.headersSent) {
+            res.writeHead(this.statusCode, this.headers)
+            if (this.patPmtPackets) {
+                try { res.write(this.patPmtPackets) } catch {}
+            }
+            for (const ch of this.recentChunks) {
+                try { res.write(ch) } catch {}
+            }
+        }
+
+        res.on("close", () => {
+            this.removeClient(res)
+        })
+    }
+
+    removeClient(res) {
+        this.clients.delete(res)
+        if (this.clients.size === 0) {
+            if (!this.destroyTimer) {
+                this.destroyTimer = setTimeout(() => {
+                    this.destroy()
+                }, 4000)
+            }
+        }
+    }
+
+    destroy() {
+        this.isDestroyed = true
+        if (this.destroyTimer) {
+            clearTimeout(this.destroyTimer)
+            this.destroyTimer = null
+        }
+        try { if (this.proxyRes) this.proxyRes.destroy() } catch {}
+        try { if (this.proxyReq) this.proxyReq.destroy() } catch {}
+        for (const c of this.clients) {
+            try { c.end() } catch {}
+        }
+        this.clients.clear()
+        this.recentChunks = []
+        sharedLiveStreams.delete(this.targetUrl)
+    }
 }
 
 function proxyRequest(req, res, targetUrl) {
@@ -172,6 +346,18 @@ function proxyRequest(req, res, targetUrl) {
         headers: headers,
         agent: parsed.protocol === "https:" ? httpsAgent : httpAgent,
         timeout: 0, // No timeout for live streams
+    }
+
+    // Shared upstream broadcaster: if 2 devices / tabs / previews request the same live stream,
+    // they share the EXACT SAME single upstream connection. Zero multi-connection risk!
+    if (isLiveStream) {
+        let shared = sharedLiveStreams.get(targetUrl)
+        if (!shared || shared.isDestroyed) {
+            shared = new SharedLiveStream(targetUrl, options, client)
+            sharedLiveStreams.set(targetUrl, shared)
+        }
+        shared.addClient(req, res)
+        return
     }
 
     let activeProxyRes = null
