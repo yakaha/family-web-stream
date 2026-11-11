@@ -3065,15 +3065,22 @@ App.store = (function () {
         return true
     }
 
+    let directSeekTimer = null
     function seekTo(seconds) {
         if (!state.playing || !isVod(state.playing.channel)) return false
         if (!App.player) return false
         if (seekDebounceTimer) clearTimeout(seekDebounceTimer)
+        if (directSeekTimer) clearTimeout(directSeekTimer)
         virtualSeekTarget = null
-        state.virtualSeekPosition = null
-        return App.player.seekTo(seconds, () => {
-            refreshPlayback(true)
-        })
+        state.virtualSeekPosition = seconds
+        directSeekTimer = setTimeout(() => {
+            state.virtualSeekPosition = null
+            directSeekTimer = null
+            App.player.seekTo(seconds, () => {
+                refreshPlayback(true)
+            })
+        }, 80)
+        return true
     }
 
     function selectPlaybackTrack(type, index) {

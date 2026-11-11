@@ -42,6 +42,7 @@ App.uiScreens = App.uiScreens || {}
         const isFullscreen = isFsState[0]
         const setIsFullscreen = isFsState[1]
         const lastTapTime = useRef(0)
+        const isDraggingSeek = useRef(false)
 
         useEffect(() => {
             function updateFs() {
@@ -108,6 +109,7 @@ App.uiScreens = App.uiScreens || {}
 
         function updateVodProgress() {
             if (!overlay && !state.menuFocus) return
+            if (isDraggingSeek.current) return
             if (store.state.virtualSeekPosition !== null && store.state.virtualSeekPosition !== undefined) {
                 return
             }
@@ -115,7 +117,7 @@ App.uiScreens = App.uiScreens || {}
             if (!info) return
             const ch = state.playing ? state.playing.channel : null
             const pos = isFinite(info.position) ? Math.max(0, info.position) : 0
-            const chDur = ch && store.parseDuration ? store.parseDuration(ch.durationSecs || ch.duration_secs || ch.duration) : 0
+            const chDur = ch && store.parseDuration ? store.parseDuration(ch.durationSecs || ch.duration_secs || ch.duration || ch.total_duration) : 0
             const dur = (isFinite(info.duration) && info.duration > 0)
                 ? info.duration
                 : chDur
@@ -123,7 +125,7 @@ App.uiScreens = App.uiScreens || {}
             const totalEl = document.getElementById("vodTimeTotal")
             const seekEl = document.getElementById("vodSeek")
             if (currentEl) currentEl.textContent = formatPosition(pos)
-            if (totalEl && dur > 0) totalEl.textContent = formatPosition(dur)
+            if (totalEl) totalEl.textContent = dur > 0 ? formatPosition(dur) : "--:--"
             if (seekEl) {
                 if (dur > 0) {
                     seekEl.max = Math.max(1, Math.floor(dur))
@@ -138,13 +140,30 @@ App.uiScreens = App.uiScreens || {}
 
         useEffect(() => {
             if (!state.playing || !store.isVod(state.playing.channel)) return
-            store.refreshPlayback()
+            store.refreshPlayback(true)
+            const v = player.videoElement ? player.videoElement() : document.getElementById("videoPlayer")
+            const onMeta = () => {
+                store.refreshPlayback(true)
+                updateVodProgress()
+            }
+            if (v) {
+                v.addEventListener("loadedmetadata", onMeta)
+                v.addEventListener("durationchange", onMeta)
+                v.addEventListener("canplay", onMeta)
+                v.addEventListener("loadeddata", onMeta)
+            }
             const tick = setInterval(() => {
                 store.refreshPlayback()
                 updateVodProgress()
             }, 1000)
             return function () {
                 clearInterval(tick)
+                if (v) {
+                    v.removeEventListener("loadedmetadata", onMeta)
+                    v.removeEventListener("durationchange", onMeta)
+                    v.removeEventListener("canplay", onMeta)
+                    v.removeEventListener("loadeddata", onMeta)
+                }
             }
         }, [state.playing, overlay, state.menuFocus])
 
@@ -444,26 +463,72 @@ App.uiScreens = App.uiScreens || {}
                                           >${formatPosition(playback.position)}</span
                                       >
                                       <input
-                                          id="vodSeek"
-                                          class="vod-seek"
-                                          type="range"
-                                          min="0"
-                                          max=${Math.max(1, Math.floor(curDur || 100))}
-                                          value=${Math.min(
-                                              Math.floor(store.state.virtualSeekPosition !== null && store.state.virtualSeekPosition !== undefined ? store.state.virtualSeekPosition : (playback.position || 0)),
-                                              Math.max(1, Math.floor(curDur || 100)),
-                                          )}
-                                          style=${`--seek-progress:${curDur > 0 ? Math.min(100, (((store.state.virtualSeekPosition !== null && store.state.virtualSeekPosition !== undefined ? store.state.virtualSeekPosition : (playback.position || 0)) / curDur) * 100)) : 0}%`}
-                                          aria-label="Playback position"
-                                          onInput=${function (event) {
-                                              store.seekTo(Number(event.currentTarget.value))
-                                              show()
-                                          }}
-                                          onChange=${function (event) {
-                                              store.seekTo(Number(event.currentTarget.value))
-                                              show()
-                                          }}
-                                      />
+                                           id="vodSeek"
+                                           class="vod-seek"
+                                           type="range"
+                                           min="0"
+                                           max=${Math.max(1, Math.floor(curDur || 100))}
+                                           value=${Math.min(
+                                               Math.floor(store.state.virtualSeekPosition !== null && store.state.virtualSeekPosition !== undefined ? store.state.virtualSeekPosition : (playback.position || 0)),
+                                               Math.max(1, Math.floor(curDur || 100)),
+                                           )}
+                                           style=${`--seek-progress:${curDur > 0 ? Math.min(100, (((store.state.virtualSeekPosition !== null && store.state.virtualSeekPosition !== undefined ? store.state.virtualSeekPosition : (playback.position || 0)) / curDur) * 100)) : 0}%`}
+                                           aria-label="Playback position"
+                                           onPointerDown=${function () {
+                                               isDraggingSeek.current = true
+                                               show()
+                                           }}
+                                           onMouseDown=${function () {
+                                               isDraggingSeek.current = true
+                                               show()
+                                           }}
+                                           onTouchStart=${function () {
+                                               isDraggingSeek.current = true
+                                               show()
+                                           }}
+                                           onInput=${function (event) {
+                                               const val = Number(event.currentTarget.value)
+                                               isDraggingSeek.current = true
+                                               store.state.virtualSeekPosition = val
+                                               const currentEl = document.getElementById("vodTimeCurrent")
+                                               if (currentEl) currentEl.textContent = formatPosition(val)
+                                               if (curDur > 0) {
+                                                   const pct = Math.min(100, (val / curDur) * 100)
+                                                   event.currentTarget.style.setProperty("--seek-progress", `${pct}%`)
+                                               }
+                                               show()
+                                           }}
+                                           onChange=${function (event) {
+                                               const val = Number(event.currentTarget.value)
+                                               isDraggingSeek.current = false
+                                               store.seekTo(val)
+                                               show()
+                                           }}
+                                           onPointerUp=${function (event) {
+                                               if (isDraggingSeek.current) {
+                                                   const val = Number(event.currentTarget.value)
+                                                   isDraggingSeek.current = false
+                                                   store.seekTo(val)
+                                                   show()
+                                               }
+                                           }}
+                                           onTouchEnd=${function (event) {
+                                               if (isDraggingSeek.current) {
+                                                   const val = Number(event.currentTarget.value)
+                                                   isDraggingSeek.current = false
+                                                   store.seekTo(val)
+                                                   show()
+                                               }
+                                           }}
+                                           onMouseUp=${function (event) {
+                                               if (isDraggingSeek.current) {
+                                                   const val = Number(event.currentTarget.value)
+                                                   isDraggingSeek.current = false
+                                                   store.seekTo(val)
+                                                   show()
+                                               }
+                                           }}
+                                       />
                                       <span class="vod-time vod-time-total" id="vodTimeTotal"
                                           >${curDur > 0 ? formatPosition(curDur) : "--:--"}</span
                                       >

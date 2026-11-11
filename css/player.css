@@ -557,17 +557,18 @@ body.playing {
 
 .vod-timeline {
     display: grid;
-    grid-template-columns: 58px minmax(100px, 1fr) 58px;
+    grid-template-columns: max-content minmax(100px, 1fr) max-content;
     align-items: center;
-    gap: 18px;
+    gap: 14px;
 }
 
 .vod-time {
-    min-width: 58px;
-    font-size: 17px;
+    min-width: max-content;
+    font-size: 16px;
     font-weight: 650;
     font-variant-numeric: tabular-nums;
     color: var(--text);
+    white-space: nowrap;
 }
 
 .vod-time-total {

@@ -2213,22 +2213,28 @@ body {
 }
 
 .fs-android-app .vod-timeline {
-    gap: 10px;
-    grid-template-columns: 52px minmax(80px, 1fr) 52px;
+    gap: 12px;
+    grid-template-columns: max-content minmax(80px, 1fr) max-content;
+    align-items: center;
 }
 
 .fs-android-app .vod-time {
     font-size: 13px;
-    min-width: 0;
+    min-width: max-content;
+    white-space: nowrap;
 }
 
 .fs-android-app .vod-actions {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    justify-content: flex-start;
-    gap: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
     margin-top: 8px;
-    padding: 2px;
+    padding: 2px 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: visible;
 }
 
 .fs-android-app .vod-actions .vod-action,
@@ -2236,19 +2242,28 @@ body {
 .fs-android-app .track-indicator {
     flex: 0 0 auto;
     min-width: 0;
-    min-height: 44px;
-    height: 44px;
-    padding: 0 14px;
-    gap: 8px;
-    font-size: 13px;
-    border-radius: 11px;
+    min-height: 40px;
+    height: 40px;
+    padding: 0 10px;
+    gap: 6px;
+    font-size: 12.5px;
+    border-radius: 10px;
     order: 0;
+    box-sizing: border-box;
 }
 
 .fs-android-app .vod-actions .vod-play {
-    min-width: 110px;
+    min-width: 95px;
     background: linear-gradient(135deg, #9a6bff 0%, #6a2cd8 100%);
     color: #fff;
+    padding: 0 14px;
+}
+
+.fs-android-app .vod-actions .vod-exit {
+    border-color: rgba(255, 68, 85, 0.45);
+    background: rgba(255, 68, 85, 0.16);
+    color: #ff6b7a;
+    font-weight: 600;
 }
 
 .fs-android-app .vod-actions .vod-play .vod-action-icon {

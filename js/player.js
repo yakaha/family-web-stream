@@ -253,12 +253,47 @@ App.player = (function () {
         stallCounter = 0
     }
 
+    let smoothPlaybackTicks = 0
+
     function startStallWatchdog(generation) {
         clearStallWatchdog()
+        smoothPlaybackTicks = 0
         stallCheckInterval = setInterval(() => {
             if (generation !== playbackGeneration || !video) return
-            if (video.paused || video.ended) {
+
+            const isVod =
+                typeof App !== "undefined" &&
+                App.store &&
+                App.store.state &&
+                App.store.state.playing &&
+                App.store.isVod &&
+                App.store.isVod(App.store.state.playing.channel)
+
+            // On Live TV, stream ended is an abnormal upstream drop/cut
+            if (video.ended) {
+                if (!isVod && activeUrl && generation === playbackGeneration) {
+                    console.warn("[AntiCoupure] Flux live terminé inopinément (video.ended). Reconnexion automatique...")
+                    scheduleLiveRetry(activeUrl, generation, "watchdog-live-ended")
+                }
                 stallCounter = 0
+                return
+            }
+
+            // On Live TV, unexpected pause is a stall
+            if (video.paused) {
+                if (!isVod && activeUrl && generation === playbackGeneration) {
+                    stallCounter++
+                    if (stallCounter >= 2) {
+                        video.play().catch(() => {})
+                    }
+                    if (stallCounter >= 4) {
+                        stallCounter = 0
+                        console.warn("[AntiCoupure] Flux live en pause inattendue. Reconnexion automatique...")
+                        scheduleLiveRetry(activeUrl, generation, "watchdog-live-paused")
+                    }
+                } else {
+                    stallCounter = 0
+                }
                 return
             }
 
@@ -276,24 +311,29 @@ App.player = (function () {
                 }
             }
 
-            // 2. Stall Detection (currentTime stuck while unpaused)
-            if (Math.abs(video.currentTime - lastPlaybackTime) < 0.1 && video.readyState >= 1) {
+            // 2. Playback progress or Stall Detection
+            if (Math.abs(video.currentTime - lastPlaybackTime) >= 0.1) {
+                // Video is advancing smoothly!
+                stallCounter = 0
+                lastPlaybackTime = video.currentTime
+                smoothPlaybackTicks++
+                if (smoothPlaybackTicks >= 8) {
+                    if (liveRetryCount > 0) {
+                        liveRetryCount = 0
+                    }
+                }
+            } else {
+                // currentTime is stuck while unpaused
+                smoothPlaybackTicks = 0
                 stallCounter++
-                if (stallCounter >= 3) {
+                if (stallCounter >= 2) {
                     video.play().catch(() => {})
                 }
-                if (stallCounter >= 8) {
+                if (stallCounter >= 4) {
                     stallCounter = 0
                     if (activeUrl && generation === playbackGeneration) {
-                        const isVod =
-                            typeof App !== "undefined" &&
-                            App.store &&
-                            App.store.state &&
-                            App.store.state.playing &&
-                            App.store.isVod &&
-                            App.store.isVod(App.store.state.playing.channel)
                         if (!isVod) {
-                            console.warn("[AntiCoupure] Flux bloqué détecté par le watchdog. Relance immédiate...")
+                            console.warn("[AntiCoupure] Flux live bloqué détecté par le watchdog. Relance immédiate...")
                             scheduleLiveRetry(activeUrl, generation, "watchdog-stall")
                         } else {
                             const resume = video.currentTime || 0
@@ -301,9 +341,6 @@ App.player = (function () {
                         }
                     }
                 }
-            } else {
-                stallCounter = 0
-                lastPlaybackTime = video.currentTime
             }
         }, 1000)
     }
@@ -651,6 +688,13 @@ App.player = (function () {
                         fail(new Error("Erreur de flux vidéo"), generation)
                     }
                 })
+                tsPlayer.on(mpegts.Events.LOADING_COMPLETE, () => {
+                    if (generation !== playbackGeneration) return
+                    if (!isVodChannel && liveRetryCount < MAX_LIVE_RETRIES) {
+                        console.warn("[AntiCoupure] mpegts LOADING_COMPLETE sur direct (amont fermé). Reconnexion automatique...")
+                        scheduleLiveRetry(url, generation, "ts-loading-complete")
+                    }
+                })
                 waitForStart(generation, false)
                 tsPlayer.load()
                 video.play()
@@ -719,12 +763,23 @@ App.player = (function () {
         const onMetadata = () => {
             if (generation === playbackGeneration && isVodChannel) {
                 if (typeof App !== "undefined" && App.store && App.store.refreshPlayback) {
-                    App.store.refreshPlayback()
+                    App.store.refreshPlayback(true)
                 }
             }
         }
-        video.addEventListener("loadedmetadata", onMetadata, { once: true })
+        video.addEventListener("loadedmetadata", onMetadata)
         video.addEventListener("durationchange", onMetadata)
+        video.addEventListener("canplay", onMetadata)
+        video.addEventListener("loadeddata", onMetadata)
+
+        const onVideoEnded = () => {
+            if (generation !== playbackGeneration) return
+            if (!isVodChannel && liveRetryCount < MAX_LIVE_RETRIES) {
+                console.warn("[AntiCoupure] Evénement video 'ended' sur flux direct. Reconnexion automatique...")
+                scheduleLiveRetry(url, generation, "video-ended")
+            }
+        }
+        video.addEventListener("ended", onVideoEnded)
 
         if (resumeAt > 0) {
             video.addEventListener(
@@ -1043,10 +1098,19 @@ App.player = (function () {
         }
         if (!video) return false
         try {
+            const wasPlaying = !video.paused
             if (isFinite(video.duration) && video.duration > 0) {
                 video.currentTime = Math.min(target, video.duration)
             } else {
                 video.currentTime = target
+            }
+            if (wasPlaying) {
+                const onSeeked = () => {
+                    video.removeEventListener("seeked", onSeeked)
+                    video.play().catch(() => {})
+                }
+                video.addEventListener("seeked", onSeeked, { once: true })
+                video.play().catch(() => {})
             }
             if (onDone) onDone()
             return true
@@ -1183,5 +1247,6 @@ App.player = (function () {
         hardware,
         setAspectRatio,
         aspectRatio: () => currentAspectRatio,
+        videoElement: () => video,
     }
 })()
