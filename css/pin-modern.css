@@ -1,0 +1,496 @@
+/* ==========================================================================
+   FAMILY STREAM - NOUVEAU DESIGN MODERNE POUR L'ÉCRAN CODE PIN
+   ========================================================================== */
+
+.fs-pin-screen.modern-mode {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: max(20px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+    box-sizing: border-box;
+    overflow-y: auto;
+    background: #090614;
+    background-image: 
+        radial-gradient(circle at 18% 45%, rgba(154, 107, 255, 0.16) 0%, transparent 45%),
+        radial-gradient(circle at 82% 55%, rgba(0, 229, 255, 0.12) 0%, transparent 45%),
+        radial-gradient(circle at 50% 10%, rgba(99, 102, 241, 0.08) 0%, transparent 50%);
+}
+
+/* Ambient glow orbs in the background */
+.fs-pin-screen.modern-mode::before {
+    content: "";
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    left: -100px;
+    top: 10%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(138, 75, 255, 0.18) 0%, transparent 70%);
+    pointer-events: none;
+    filter: blur(60px);
+}
+
+.fs-pin-screen.modern-mode::after {
+    content: "";
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    right: -80px;
+    bottom: 5%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0, 245, 196, 0.14) 0%, transparent 70%);
+    pointer-events: none;
+    filter: blur(50px);
+}
+
+/* Central Frosted Glassmorphism Card */
+.fs-pin-modern-card {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 960px;
+    display: grid;
+    grid-template-columns: 1fr 370px;
+    gap: 40px;
+    align-items: center;
+    background: rgba(14, 10, 30, 0.78);
+    border: 1px solid rgba(154, 107, 255, 0.32);
+    border-radius: 26px;
+    padding: 38px 44px;
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    box-shadow: 
+        0 28px 75px rgba(0, 0, 0, 0.75),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        0 0 45px rgba(154, 107, 255, 0.14);
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+}
+
+/* LEFT COLUMN */
+.fs-pin-modern-left {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    min-width: 0;
+}
+
+/* Brand Logo */
+.fs-pin-modern-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.fs-pin-modern-brand-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #9a6bff 0%, #00e5ff 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 22px;
+    font-weight: 900;
+    box-shadow: 0 4px 18px rgba(0, 229, 255, 0.35);
+}
+
+.fs-pin-modern-brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+}
+
+.fs-pin-modern-brand-name {
+    font-size: 19px;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+    color: #ffffff;
+    text-transform: uppercase;
+}
+
+.fs-pin-modern-brand-name span {
+    color: #00e5ff;
+}
+
+/* Title & Subtitle */
+.fs-pin-modern-title {
+    margin: 4px 0 0;
+    font-size: clamp(22px, 2.4vw, 30px);
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+}
+
+.fs-pin-modern-subtitle {
+    margin: -6px 0 6px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #94a3b8;
+}
+
+/* 4 PIN Digit Slots */
+.fs-pin-modern-slots {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 6px 0;
+}
+
+.fs-pin-modern-slot {
+    width: 58px;
+    height: 58px;
+    border-radius: 14px;
+    background: rgba(22, 16, 46, 0.85);
+    border: 1.5px solid rgba(148, 163, 184, 0.22);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.fs-pin-modern-slot .dot {
+    display: block;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #334155;
+    opacity: 0.35;
+    transition: all 0.2s ease;
+}
+
+/* Filled Slot */
+.fs-pin-modern-slot.filled {
+    border-color: rgba(0, 245, 196, 0.5);
+    background: rgba(0, 245, 196, 0.12);
+    box-shadow: 0 0 16px rgba(0, 245, 196, 0.25);
+}
+
+.fs-pin-modern-slot.filled .dot {
+    width: 16px;
+    height: 16px;
+    background: #00f5c4;
+    opacity: 1;
+    box-shadow: 0 0 12px #00f5c4, 0 0 20px rgba(0, 245, 196, 0.7);
+    transform: scale(1.1);
+}
+
+/* Active Slot (current digit to enter) */
+.fs-pin-modern-slot.active {
+    border: 2px solid #00f5c4;
+    background: rgba(0, 245, 196, 0.08);
+    box-shadow: 0 0 20px rgba(0, 245, 196, 0.45);
+    transform: translateY(-2px);
+}
+
+.fs-pin-modern-slot.active .dot {
+    width: 14px;
+    height: 14px;
+    background: transparent;
+    border: 2px solid #00f5c4;
+    opacity: 0.8;
+}
+
+/* Error message */
+.fs-pin-modern-error {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    color: #fca5a5;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* Status & Network Badges Row */
+.fs-pin-modern-badges {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.fs-pin-badge-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 14px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #e2e8f0;
+    font-size: 12.5px;
+    font-weight: 600;
+    box-sizing: border-box;
+    cursor: default;
+    transition: all 0.18s ease;
+}
+
+.fs-pin-badge-pill.clickable {
+    cursor: pointer;
+}
+
+.fs-pin-badge-pill.clickable:hover,
+.fs-pin-badge-pill.clickable.focused,
+.fs-pin-badge-pill.clickable:focus {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(154, 107, 255, 0.5);
+    transform: translateY(-1px);
+}
+
+.fs-pin-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 8px #10b981;
+}
+
+.fs-pin-status-dot.off {
+    background: #64748b;
+    box-shadow: none;
+}
+
+/* Style Switcher Pill */
+.fs-pin-style-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding: 6px 12px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px dashed rgba(196, 181, 253, 0.3);
+    color: #a78bfa;
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.fs-pin-style-switch:hover,
+.fs-pin-style-switch.focused,
+.fs-pin-style-switch:focus {
+    background: rgba(167, 139, 250, 0.15);
+    border-color: #a78bfa;
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+/* RIGHT COLUMN: KEYPAD & ACTIONS */
+.fs-pin-modern-right {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Keypad Card */
+.fs-pin-modern-keypad-card {
+    background: rgba(20, 14, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 20px;
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+.fs-pin-modern-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Keypad Buttons */
+.fs-pin-modern-key {
+    height: 52px;
+    border-radius: 13px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    color: #f8fafc;
+    font-size: 21px;
+    font-weight: 700;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.fs-pin-modern-key:hover,
+.fs-pin-modern-key.focused,
+.fs-pin-modern-key:focus {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: #00f5c4;
+    color: #ffffff;
+    box-shadow: 0 0 16px rgba(0, 245, 196, 0.45);
+    transform: scale(1.04);
+}
+
+.fs-pin-modern-key:active {
+    transform: scale(0.96);
+}
+
+.fs-pin-modern-key.fn {
+    font-size: 18px;
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.035);
+}
+
+.fs-pin-modern-key.fn:hover,
+.fs-pin-modern-key.fn.focused,
+.fs-pin-modern-key.fn:focus {
+    color: #00f5c4;
+    background: rgba(0, 245, 196, 0.12);
+}
+
+/* Action Buttons */
+.fs-pin-modern-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    width: 100%;
+}
+
+.fs-pin-modern-btn-primary {
+    width: 100%;
+    height: 48px;
+    border-radius: 13px;
+    border: 0;
+    background: linear-gradient(90deg, #9a6bff 0%, #00e5ff 100%);
+    color: #ffffff;
+    font-size: 13.5px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    box-shadow: 0 6px 22px rgba(0, 229, 255, 0.35);
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.fs-pin-modern-btn-primary:hover,
+.fs-pin-modern-btn-primary.focused,
+.fs-pin-modern-btn-primary:focus {
+    box-shadow: 0 0 0 3px #ffffff, 0 10px 30px rgba(0, 229, 255, 0.6);
+    transform: scale(1.02);
+}
+
+.fs-pin-modern-btn-primary:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+.fs-pin-modern-btn-secondary {
+    width: 100%;
+    height: 40px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #cbd5e1;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.fs-pin-modern-btn-secondary:hover,
+.fs-pin-modern-btn-secondary.focused,
+.fs-pin-modern-btn-secondary:focus {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(154, 107, 255, 0.5);
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+
+.fs-pin-modern-btn-secondary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN (Tablettes, Mobiles, TV)
+   ========================================================================== */
+
+@media (max-width: 860px) {
+    .fs-pin-modern-card {
+        grid-template-columns: 1fr;
+        gap: 26px;
+        max-width: 460px;
+        padding: 28px 24px;
+        margin: auto;
+    }
+
+    .fs-pin-modern-left {
+        align-items: center;
+        text-align: center;
+    }
+
+    .fs-pin-modern-badges {
+        justify-content: center;
+    }
+
+    .fs-pin-modern-slots {
+        justify-content: center;
+    }
+
+    .fs-pin-modern-slot {
+        width: 52px;
+        height: 52px;
+    }
+
+    .fs-pin-modern-key {
+        height: 48px;
+        font-size: 19px;
+    }
+}
+
+@media (max-width: 480px) {
+    .fs-pin-modern-card {
+        padding: 20px 16px;
+        border-radius: 20px;
+    }
+
+    .fs-pin-modern-title {
+        font-size: 20px;
+    }
+
+    .fs-pin-modern-slot {
+        width: 46px;
+        height: 46px;
+    }
+
+    .fs-pin-modern-key {
+        height: 44px;
+        font-size: 18px;
+    }
+}

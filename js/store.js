@@ -76,6 +76,13 @@ App.store = (function () {
         pinEntry: "",
         pinLoading: false,
         pinSubmitted: false,
+        pinDesign: (function () {
+            try {
+                return localStorage.getItem("fs_pin_design") || "modern"
+            } catch (e) {
+                return "modern"
+            }
+        })(),
         currentSeries: null,
         seriesEpisodes: [],
         playbackInfo: null,
@@ -1648,6 +1655,16 @@ App.store = (function () {
         setPinEntry("")
     }
 
+    function togglePinDesign() {
+        const next = state.pinDesign === "classic" ? "modern" : "classic"
+        state.pinDesign = next
+        try {
+            localStorage.setItem("fs_pin_design", next)
+        } catch (e) {}
+        notify(`Design Code PIN : ${next === "modern" ? "Nouveau Design" : "Ancien Design"}`)
+        emit()
+    }
+
     function openServers() {
         if (!state.firebaseUser) return
         set({ screen: "servers" })
@@ -3214,6 +3231,7 @@ App.store = (function () {
         appendPinDigit,
         backspacePin,
         clearPin,
+        togglePinDesign,
         openServers,
         switchServer,
         openSeries,
